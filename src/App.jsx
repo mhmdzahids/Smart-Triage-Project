@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import AdminPanel from './AdminPanel'
 import NursePanel from './NursePanel'
+import DoctorPanel from './DoctorPanel'
 
 function App() {
   const [role, setRole] = useState('admin')
@@ -46,13 +47,30 @@ function App() {
           <i className="bi bi-activity me-1" />
           Nurse Panel
         </button>
+        <button
+          onClick={() => setRole('doctor')}
+          className="btn btn-sm rounded-pill px-3 transition-all"
+          style={{
+            background: role === 'doctor' ? '#4f46e5' : 'transparent',
+            color: role === 'doctor' ? '#fff' : '#64748b',
+            border: 'none',
+            fontSize: '12px',
+            fontWeight: '600'
+          }}
+        >
+          <i className="bi bi-shield-shaded me-1" />
+          Doctor Panel
+        </button>
       </div>
 
-      {role === 'admin' ? <AdminPanel /> : <NursePanel />}
+      {role === 'admin' && <AdminPanel />}
+      {role === 'nurse' && <NursePanel />}
+      {role === 'doctor' && <DoctorPanel />}
     </>
   )
 }
 
 export default App
+
 
 

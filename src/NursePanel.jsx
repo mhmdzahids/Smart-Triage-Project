@@ -16,6 +16,7 @@ const MOCK_PATIENTS_NURSE = [
     hubKontak: "Suami",
     statusPasien: "BPJS",
     tglDaftar: "2025-06-20",
+    keluhan: "Nyeri dada sebelah kiri menjalar ke lengan kiri sejak 2 jam lalu",
     
     // Anthropometric Data
     beratBadan: 58,
@@ -52,6 +53,7 @@ const MOCK_PATIENTS_NURSE = [
     hubKontak: "Istri",
     statusPasien: "Umum",
     tglDaftar: "2025-06-21",
+    keluhan: "Sesak napas disertai demam tinggi sejak kemarin sore",
 
     // Anthropometric Data
     beratBadan: 75,
@@ -88,6 +90,7 @@ const MOCK_PATIENTS_NURSE = [
     hubKontak: "Ibu",
     statusPasien: "BPJS",
     tglDaftar: "2025-06-22",
+    keluhan: "Demam naik turun dan rewel sejak 1 hari yang lalu",
 
     // Anthropometric Data
     beratBadan: 8.5,
@@ -234,6 +237,7 @@ function getBMIBadgeColor(bmi) {
 function downloadTriageCSV(patient) {
   const headers = [
     "ID", "Nama Pasien", "NIK", "No BPJS", "Umur", "Jenis Kelamin",
+    "Keluhan Utama",
     "Berat Badan (kg)", "Tinggi Badan (cm)", "BMI / IMT", "Kategori BMI", "Lingkar Kepala (cm)", "Lingkar Lengan (cm)", "Gol Darah",
     "Respiratory Rate (x/mnt)", "SpO2 (%)", "Oksigen Tambahan", "Suhu (°C)", "Tekanan Darah Sistolik", "Tekanan Darah Diastolik", "Nadi (x/mnt)", "Kesadaran (AVPU)",
     "NEWS Score", "Triage Risk Level", "Waktu Triase"
@@ -244,6 +248,7 @@ function downloadTriageCSV(patient) {
 
   const row = [
     patient.id, patient.nama, patient.nik, patient.noBpjs || "-", patient.umur, patient.jenisKelamin,
+    patient.keluhan || "-",
     patient.beratBadan || "-", patient.tinggiBadan || "-", bmi || "-", bmiCat || "-", patient.lingkarKepala || "-", patient.lingkarLengan || "-", patient.golDarah || "-",
     patient.rr || "-", patient.spo2 || "-", patient.suplemenO2 || "-", patient.suhu || "-", patient.sistolik || "-", patient.diastolik || "-", patient.nadi || "-", patient.avpu || "-",
     patient.newsScore !== undefined ? patient.newsScore : "-", patient.triageRisk || "-", patient.tglTriage || "-"
@@ -551,6 +556,7 @@ function TriageWorkspace({ patients, setPatients, selectedId, setSelectedId }) {
   const [lingkarKepala, setLingkarKepala] = useState(activePatient?.lingkarKepala || "");
   const [lingkarLengan, setLingkarLengan] = useState(activePatient?.lingkarLengan || "");
   const [golDarah, setGolDarah] = useState(activePatient?.golDarah || "-");
+  const [keluhan, setKeluhan] = useState(activePatient?.keluhan || "");
 
   const [rr, setRr] = useState(activePatient?.rr || "");
   const [spo2, setSpo2] = useState(activePatient?.spo2 || "");
@@ -571,6 +577,7 @@ function TriageWorkspace({ patients, setPatients, selectedId, setSelectedId }) {
     setLingkarKepala(p.lingkarKepala || "");
     setLingkarLengan(p.lingkarLengan || "");
     setGolDarah(p.golDarah || "-");
+    setKeluhan(p.keluhan || "");
 
     setRr(p.rr || "");
     setSpo2(p.spo2 || "");
@@ -609,6 +616,7 @@ function TriageWorkspace({ patients, setPatients, selectedId, setSelectedId }) {
             lingkarKepala: parseFloat(lingkarKepala) || "",
             lingkarLengan: parseFloat(lingkarLengan) || "",
             golDarah: golDarah,
+            keluhan: keluhan,
             
             rr: parseInt(rr) || "",
             spo2: parseInt(spo2) || "",
@@ -732,6 +740,22 @@ function TriageWorkspace({ patients, setPatients, selectedId, setSelectedId }) {
             <div className="row g-4">
               {/* Left Column: Anthropometric & Vitals Forms */}
               <div className="col-12 col-xl-8">
+                {/* Keluhan Utama */}
+                <div className="mb-4">
+                  <div className="d-flex align-items-center gap-2 mb-2" style={{ color: "#0f766e" }}>
+                    <div style={{ width: 4, height: 16, background: "#0d9488", borderRadius: 2 }} />
+                    <span className="fw-bold" style={{ fontSize: 14 }}>Keluhan Utama / Deskripsi Keluhan</span>
+                  </div>
+                  <textarea
+                    className="form-control"
+                    rows={2}
+                    placeholder="Tuliskan keluhan utama pasien secara detail (contoh: nyeri dada menjalar ke lengan kiri, sesak napas, pusing berputar, dll.)"
+                    value={keluhan}
+                    onChange={(e) => setKeluhan(e.target.value)}
+                    style={{ fontSize: 13, resize: "none" }}
+                  />
+                </div>
+
                 {/* 1. Antropometri Data */}
                 <div className="mb-4">
                   <div className="d-flex align-items-center gap-2 mb-3" style={{ color: "#0f766e" }}>
