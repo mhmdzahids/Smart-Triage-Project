@@ -14,6 +14,7 @@ const MOCK_PATIENTS = [
     noHp: "08123456789",
     namaKontak: "Budi Rahayu",
     hubKontak: "Suami",
+    noHpKontak: "08122222222",
     statusPasien: "BPJS",
     tglDaftar: "2025-06-20",
   },
@@ -29,6 +30,7 @@ const MOCK_PATIENTS = [
     noHp: "08234567890",
     namaKontak: "Dewi Fauzi",
     hubKontak: "Istri",
+    noHpKontak: "08233333333",
     statusPasien: "Umum",
     tglDaftar: "2025-06-21",
   },
@@ -44,6 +46,7 @@ const MOCK_PATIENTS = [
     noHp: "08345678901",
     namaKontak: "Toni Kusuma",
     hubKontak: "Suami",
+    noHpKontak: "08344444444",
     statusPasien: "Asuransi",
     tglDaftar: "2025-06-22",
   },
@@ -60,6 +63,7 @@ const EMPTY_FORM = {
   noHp: "",
   namaKontak: "",
   hubKontak: "",
+  noHpKontak: "",
   statusPasien: "",
 };
 
@@ -77,12 +81,12 @@ function calcUmur(tglLahir) {
 function downloadCSV(data) {
   const headers = [
     "ID","Nama","NIK","No BPJS","Tgl Lahir","Umur","Jenis Kelamin",
-    "Alamat","No HP","Nama Kontak Darurat","Hubungan Kontak","Status Pasien","Tgl Daftar",
+    "Alamat","No HP","Nama Kontak Darurat","Hubungan Kontak","No HP Kontak Darurat","Status Pasien","Tgl Daftar",
   ];
   const rows = data.map((p) =>
     [
       p.id, p.nama, p.nik, p.noBpjs, p.tglLahir, p.umur, p.jenisKelamin,
-      `"${p.alamat}"`, p.noHp, p.namaKontak, p.hubKontak, p.statusPasien, p.tglDaftar,
+      `"${p.alamat}"`, p.noHp, p.namaKontak, p.hubKontak, p.noHpKontak, p.statusPasien, p.tglDaftar,
     ].join(",")
   );
   const csv = [headers.join(","), ...rows].join("\n");
@@ -466,9 +470,10 @@ function DataPasienPage({ patients, setPatients }) {
                     <td className="py-3">{p.jenisKelamin}</td>
                     <td className="py-3">{p.noHp}</td>
                     <td className="py-3">
-                      <div>{p.namaKontak}</div>
+                      <div className="fw-medium">{p.namaKontak} ({p.hubKontak})</div>
                       <div className="text-muted" style={{ fontSize: 11 }}>
-                        {p.hubKontak}
+                        <i className="bi bi-telephone-fill me-1 text-secondary" style={{ fontSize: 10 }} />
+                        {p.noHpKontak || "-"}
                       </div>
                     </td>
                     <td className="py-3">
@@ -570,10 +575,10 @@ function TambahPasienPage({ patients, setPatients, setActivePage }) {
   };
 
   const validate = () => {
-    const required = ["nama", "nik", "tglLahir", "jenisKelamin", "alamat", "noHp", "namaKontak", "hubKontak", "statusPasien"];
+    const required = ["nama", "nik", "tglLahir", "jenisKelamin", "alamat", "noHp", "namaKontak", "hubKontak", "noHpKontak", "statusPasien"];
     const newErrors = {};
     required.forEach((f) => {
-      if (!form[f].trim()) newErrors[f] = "Wajib diisi";
+      if (!form[f] || !form[f].trim()) newErrors[f] = "Wajib diisi";
     });
     if (form.nik && form.nik.length !== 16) newErrors.nik = "NIK harus 16 digit";
     if (form.noBpjs && form.noBpjs.length !== 13)
@@ -819,11 +824,14 @@ function TambahPasienPage({ patients, setPatients, setActivePage }) {
             </span>
           </div>
           <div className="row g-3">
-            <div className="col-12 col-md-6">
+            <div className="col-12 col-md-4">
               <Field label="Nama Kontak Darurat" name="namaKontak" placeholder="Nama lengkap" required />
             </div>
-            <div className="col-12 col-md-6">
+            <div className="col-12 col-md-4">
               <Field label="Hubungan dengan Pasien" name="hubKontak" placeholder="Contoh: Ayah, Ibu, Suami, Istri" required />
+            </div>
+            <div className="col-12 col-md-4">
+              <Field label="Nomor HP Kontak Darurat" name="noHpKontak" type="tel" placeholder="Contoh: 08123456789" required />
             </div>
           </div>
         </div>

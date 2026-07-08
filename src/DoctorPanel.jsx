@@ -35,7 +35,7 @@ const MOCK_PATIENTS_DOCTOR = [
     diastolik: 80,
     nadi: 78,
     avpu: "Alert",
-    newsScore: 0,
+    meowsScore: 0,
     triageRisk: "Low",
     tglTriage: "2025-06-20 22:45",
 
@@ -78,7 +78,7 @@ const MOCK_PATIENTS_DOCTOR = [
     diastolik: 65,
     nadi: 112,
     avpu: "Alert",
-    newsScore: 8,
+    meowsScore: 8,
     triageRisk: "High",
     tglTriage: "2025-06-21 14:12",
 
@@ -121,7 +121,7 @@ const MOCK_PATIENTS_DOCTOR = [
     diastolik: 55,
     nadi: 125,
     avpu: "Alert",
-    newsScore: 1,
+    meowsScore: 1,
     triageRisk: "Low",
     tglTriage: "2025-06-22 09:30",
 
@@ -156,8 +156,96 @@ function getBMIBadgeColor(bmi) {
   return "bg-danger text-white";
 }
 
-// NEWS Clinical Response Guideline
-function getNEWSGuidance(risk) {
+// ─── MEOWS Scoring Logic ──────────────────────────────────────────────────────
+function calculateMEOWS(vitals) {
+  let score = 0;
+  const { rr, spo2, suplemenO2, suhu, sistolik, nadi, avpu } = vitals;
+
+  // 1. Respiration Rate
+  const rrVal = parseInt(rr);
+  if (!isNaN(rrVal)) {
+    if (rrVal <= 8) score += 3;
+    else if (rrVal >= 9 && rrVal <= 11) score += 1;
+    else if (rrVal >= 12 && rrVal <= 20) score += 0;
+    else if (rrVal >= 21 && rrVal <= 24) score += 2;
+    else if (rrVal >= 25) score += 3;
+  }
+
+  // 2. SpO2
+  const spo2Val = parseInt(spo2);
+  if (!isNaN(spo2Val)) {
+    if (spo2Val <= 91) score += 3;
+    else if (spo2Val >= 92 && spo2Val <= 93) score += 2;
+    else if (spo2Val >= 94 && spo2Val <= 95) score += 1;
+    else if (spo2Val >= 96) score += 0;
+  }
+
+  // 3. Supplemental Oxygen
+  if (suplemenO2 === "Ya") {
+    score += 2;
+  }
+
+  // 4. Temperature
+  const tempVal = parseFloat(suhu);
+  if (!isNaN(tempVal)) {
+    if (tempVal <= 35.0) score += 3;
+    else if (tempVal >= 35.1 && tempVal <= 36.0) score += 1;
+    else if (tempVal >= 36.1 && tempVal <= 38.0) score += 0;
+    else if (tempVal >= 38.1 && tempVal <= 39.0) score += 1;
+    else if (tempVal >= 39.1) score += 3;
+  }
+
+  // 5. Systolic BP
+  const sbpVal = parseInt(sistolik);
+  if (!isNaN(sbpVal)) {
+    if (sbpVal <= 90) score += 3;
+    else if (sbpVal >= 91 && sbpVal <= 100) score += 2;
+    else if (sbpVal >= 101 && sbpVal <= 110) score += 1;
+    else if (sbpVal >= 111 && sbpVal <= 219) score += 0;
+    else if (sbpVal >= 220) score += 3;
+  }
+
+  // 6. Heart Rate
+  const hrVal = parseInt(nadi);
+  if (!isNaN(hrVal)) {
+    if (hrVal <= 40) score += 3;
+    else if (hrVal >= 41 && hrVal <= 50) score += 1;
+    else if (hrVal >= 51 && hrVal <= 90) score += 0;
+    else if (hrVal >= 91 && hrVal <= 110) score += 1;
+    else if (hrVal >= 111 && hrVal <= 130) score += 2;
+    else if (hrVal >= 131) score += 3;
+  }
+
+  // 7. AVPU (Consciousness)
+  if (avpu && avpu !== "Alert" && avpu !== "A") {
+    score += 3;
+  }
+
+  // Risk Classification
+  let risk = "Low";
+  if (score >= 7) {
+    risk = "High";
+  } else if (score >= 5) {
+    risk = "Medium";
+  } else {
+    const hasExtreme = 
+      (rrVal <= 8 || rrVal >= 25) || 
+      (spo2Val <= 91) || 
+      (tempVal <= 35.0 || tempVal >= 39.1) || 
+      (sbpVal <= 90 || sbpVal >= 220) || 
+      (hrVal <= 40 || hrVal >= 131) || 
+      (avpu && avpu !== "Alert");
+      
+    if (hasExtreme) {
+      risk = "Medium";
+    }
+  }
+
+  return { score, risk };
+}
+
+// MEOWS Clinical Response Guideline
+function getMEOWSGuidance(risk) {
   if (risk === "High") {
     return {
       title: "Respon Segera - Resiko Tinggi (Merah)",
@@ -198,8 +286,8 @@ function downloadMedicalRecordCSV(p) {
     "Keluhan Utama", 
     "Berat Badan (kg)", "Tinggi Badan (cm)", "IMT / BMI", "Kategori BMI", "Lingkar Kepala (cm)", "Lingkar Lengan (cm)", "Golongan Darah",
     "Respiratory Rate (x/mnt)", "SpO2 (%)", "Oksigen Tambahan", "Suhu Tubuh (°C)", "Tekanan Darah Sistolik (mmHg)", "Tekanan Darah Diastolik (mmHg)", "Heart Rate (x/mnt)", "Kesadaran (AVPU)",
-    "NEWS Score", "Triage Risk Level", "Waktu Triase",
-    "Diagnosis Dokter", "Rencana Terapi / Tindakan", "Disposisi Akhir", "Status Pemeriksaan"
+    "MEOWS Score", "Triage Risk Level", "Waktu Triase",
+    "Diagnosis Dokter", "Status Pemeriksaan"
   ];
 
   const bmiVal = calcBMI(p.beratBadan, p.tinggiBadan);
@@ -210,8 +298,8 @@ function downloadMedicalRecordCSV(p) {
     p.keluhan || "-",
     p.beratBadan || "-", p.tinggiBadan || "-", bmiVal || "-", bmiCat || "-", p.lingkarKepala || "-", p.lingkarLengan || "-", p.golDarah || "-",
     p.rr || "-", p.spo2 || "-", p.suplemenO2 || "-", p.suhu || "-", p.sistolik || "-", p.diastolik || "-", p.nadi || "-", p.avpu || "-",
-    p.newsScore !== undefined ? p.newsScore : "-", p.triageRisk || "-", p.tglTriage || "-",
-    p.diagnosa || "Belum Diinput", p.rencanaTerapi || "Belum Diinput", p.disposisi || "Belum Ditentukan", p.statusDiagnosis
+    p.meowsScore !== undefined ? p.meowsScore : "-", p.triageRisk || "-", p.tglTriage || "-",
+    p.diagnosa || "Belum Diinput", p.statusDiagnosis
   ].map(val => typeof val === "string" ? `"${val.replace(/"/g, '""')}"` : val).join(",");
 
   const csv = [headers.join(","), row].join("\n");
@@ -347,14 +435,14 @@ function DoctorDashboard({ patients, setActivePage, setSelectedId }) {
     { label: "Resiko Tinggi IGD (Waiting)", value: urgentCount, icon: "bi-exclamation-triangle", color: "#ef4444", bg: "#fef2f2" }
   ];
 
-  // Clinical priority sorting: NEWS score high -> low, undiagnosed first
+  // Clinical priority sorting: MEOWS score high -> low, undiagnosed first
   const sortedPatients = [...patients].sort((a, b) => {
     // 1. Sort by diagnosis status (undiagnosed first)
     if (a.statusDiagnosis !== b.statusDiagnosis) {
       return a.statusDiagnosis === "Belum Diperiksa" ? -1 : 1;
     }
-    // 2. Sort by NEWS score (highest first)
-    return b.newsScore - a.newsScore;
+    // 2. Sort by MEOWS score (highest first)
+    return b.meowsScore - a.meowsScore;
   });
 
   return (
@@ -401,10 +489,10 @@ function DoctorDashboard({ patients, setActivePage, setSelectedId }) {
         <div className="d-flex align-items-center justify-content-between mb-3">
           <h6 className="fw-semibold mb-0" style={{ color: "#312e81", fontSize: 16 }}>
             <i className="bi bi-list-stars me-2" />
-            Antrean Pemeriksaan IGD (Prioritas NEWS)
+            Antrean Pemeriksaan IGD (Prioritas MEOWS)
           </h6>
           <span className="badge bg-light text-muted border py-2 px-3" style={{ fontSize: 11 }}>
-            Diurutkan Otomatis Berdasarkan Tingkat Keparahan NEWS
+            Diurutkan Otomatis Berdasarkan Tingkat Keparahan MEOWS
           </span>
         </div>
 
@@ -415,7 +503,7 @@ function DoctorDashboard({ patients, setActivePage, setSelectedId }) {
                 <th className="fw-semibold text-muted border-0 py-2">Nama Pasien</th>
                 <th className="fw-semibold text-muted border-0 py-2">Waktu Triase</th>
                 <th className="fw-semibold text-muted border-0 py-2">Keluhan Utama</th>
-                <th className="fw-semibold text-muted border-0 py-2 text-center">NEWS Score</th>
+                <th className="fw-semibold text-muted border-0 py-2 text-center">MEOWS Score</th>
                 <th className="fw-semibold text-muted border-0 py-2 text-center">Tingkat Resiko</th>
                 <th className="fw-semibold text-muted border-0 py-2 text-center">Status Dokter</th>
                 <th className="fw-semibold text-muted border-0 py-2 text-center">Aksi</th>
@@ -436,14 +524,14 @@ function DoctorDashboard({ patients, setActivePage, setSelectedId }) {
                     <span
                       className="badge font-monospace"
                       style={{
-                        background: p.newsScore >= 7 ? "#fde8e8" : p.newsScore >= 5 ? "#fff8e1" : "#e6f4ea",
-                        color: p.newsScore >= 7 ? "#c53030" : p.newsScore >= 5 ? "#b7791f" : "#137333",
+                        background: p.meowsScore >= 7 ? "#fde8e8" : p.meowsScore >= 5 ? "#fff8e1" : "#e6f4ea",
+                        color: p.meowsScore >= 7 ? "#c53030" : p.meowsScore >= 5 ? "#b7791f" : "#137333",
                         fontSize: 13,
                         fontWeight: 600,
                         padding: "4px 8px"
                       }}
                     >
-                      {p.newsScore}
+                      {p.meowsScore}
                     </span>
                   </td>
                   <td className="py-3 text-center">
@@ -501,17 +589,131 @@ function DiagnoseWorkspace({ patients, setPatients, selectedId, setSelectedId })
 
   // Diagnosis inputs states
   const [diagnosa, setDiagnosa] = useState(activePatient?.diagnosa || "");
-  const [rencanaTerapi, setRencanaTerapi] = useState(activePatient?.rencanaTerapi || "");
-  const [disposisi, setDisposisi] = useState(activePatient?.disposisi || "Rawat Jalan");
+  const [beratBadan, setBeratBadan] = useState(activePatient?.beratBadan || "");
+  const [tinggiBadan, setTinggiBadan] = useState(activePatient?.tinggiBadan || "");
+  const [lingkarKepala, setLingkarKepala] = useState(activePatient?.lingkarKepala || "");
+  const [lingkarLengan, setLingkarLengan] = useState(activePatient?.lingkarLengan || "");
+  const [golDarah, setGolDarah] = useState(activePatient?.golDarah || "");
+  
+  const [rr, setRr] = useState(activePatient?.rr || "");
+  const [spo2, setSpo2] = useState(activePatient?.spo2 || "");
+  const [suplemenO2, setSuplemenO2] = useState(activePatient?.suplemenO2 || "Tidak");
+  const [suhu, setSuhu] = useState(activePatient?.suhu || "");
+  const [sistolik, setSistolik] = useState(activePatient?.sistolik || "");
+  const [diastolik, setDiastolik] = useState(activePatient?.diastolik || "");
+  const [nadi, setNadi] = useState(activePatient?.nadi || "");
+  const [avpu, setAvpu] = useState(activePatient?.avpu || "Alert");
+
+  const [isEditingAnthro, setIsEditingAnthro] = useState(false);
+  const [isEditingVitals, setIsEditingVitals] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
   // Sync state when activePatient changes
   const handleSelectPatient = (p) => {
     setSelectedId(p.id);
     setDiagnosa(p.diagnosa || "");
-    setRencanaTerapi(p.rencanaTerapi || "");
-    setDisposisi(p.disposisi || "Rawat Jalan");
+    setBeratBadan(p.beratBadan || "");
+    setTinggiBadan(p.tinggiBadan || "");
+    setLingkarKepala(p.lingkarKepala || "");
+    setLingkarLengan(p.lingkarLengan || "");
+    setGolDarah(p.golDarah || "");
+    
+    setRr(p.rr || "");
+    setSpo2(p.spo2 || "");
+    setSuplemenO2(p.suplemenO2 || "Tidak");
+    setSuhu(p.suhu || "");
+    setSistolik(p.sistolik || "");
+    setDiastolik(p.diastolik || "");
+    setNadi(p.nadi || "");
+    setAvpu(p.avpu || "Alert");
+    
+    setIsEditingAnthro(false);
+    setIsEditingVitals(false);
     setSaveSuccess(false);
+  };
+
+  // Live calculation of MEOWS Score based on current inputs
+  const currentMeows = calculateMEOWS({
+    rr,
+    spo2,
+    suplemenO2,
+    suhu,
+    sistolik,
+    nadi,
+    avpu
+  });
+
+  const handleSaveAnthro = () => {
+    setPatients((prev) => 
+      prev.map((p) => {
+        if (p.id === activePatient.id) {
+          return {
+            ...p,
+            beratBadan: beratBadan !== "" ? parseFloat(beratBadan) : "",
+            tinggiBadan: tinggiBadan !== "" ? parseFloat(tinggiBadan) : "",
+            lingkarKepala: lingkarKepala !== "" ? parseFloat(lingkarKepala) : "",
+            lingkarLengan: lingkarLengan !== "" ? parseFloat(lingkarLengan) : "",
+            golDarah: golDarah
+          };
+        }
+        return p;
+      })
+    );
+    setIsEditingAnthro(false);
+  };
+
+  const handleCancelAnthro = () => {
+    setBeratBadan(activePatient?.beratBadan || "");
+    setTinggiBadan(activePatient?.tinggiBadan || "");
+    setLingkarKepala(activePatient?.lingkarKepala || "");
+    setLingkarLengan(activePatient?.lingkarLengan || "");
+    setGolDarah(activePatient?.golDarah || "");
+    setIsEditingAnthro(false);
+  };
+
+  const handleSaveVitals = () => {
+    const newMeows = calculateMEOWS({
+      rr,
+      spo2,
+      suplemenO2,
+      suhu,
+      sistolik,
+      nadi,
+      avpu
+    });
+    setPatients((prev) => 
+      prev.map((p) => {
+        if (p.id === activePatient.id) {
+          return {
+            ...p,
+            rr: rr !== "" ? parseInt(rr) : "",
+            spo2: spo2 !== "" ? parseInt(spo2) : "",
+            suplemenO2: suplemenO2,
+            suhu: suhu !== "" ? parseFloat(suhu) : "",
+            sistolik: sistolik !== "" ? parseInt(sistolik) : "",
+            diastolik: diastolik !== "" ? parseInt(diastolik) : "",
+            nadi: nadi !== "" ? parseInt(nadi) : "",
+            avpu: avpu,
+            meowsScore: newMeows.score,
+            triageRisk: newMeows.risk
+          };
+        }
+        return p;
+      })
+    );
+    setIsEditingVitals(false);
+  };
+
+  const handleCancelVitals = () => {
+    setRr(activePatient?.rr || "");
+    setSpo2(activePatient?.spo2 || "");
+    setSuplemenO2(activePatient?.suplemenO2 || "Tidak");
+    setSuhu(activePatient?.suhu || "");
+    setSistolik(activePatient?.sistolik || "");
+    setDiastolik(activePatient?.diastolik || "");
+    setNadi(activePatient?.nadi || "");
+    setAvpu(activePatient?.avpu || "Alert");
+    setIsEditingVitals(false);
   };
 
   const handleSave = () => {
@@ -521,25 +723,42 @@ function DiagnoseWorkspace({ patients, setPatients, selectedId, setSelectedId })
           return {
             ...p,
             diagnosa: diagnosa,
-            rencanaTerapi: rencanaTerapi,
-            disposisi: disposisi,
+            beratBadan: beratBadan !== "" ? parseFloat(beratBadan) : "",
+            tinggiBadan: tinggiBadan !== "" ? parseFloat(tinggiBadan) : "",
+            lingkarKepala: lingkarKepala !== "" ? parseFloat(lingkarKepala) : "",
+            lingkarLengan: lingkarLengan !== "" ? parseFloat(lingkarLengan) : "",
+            golDarah: golDarah,
+            rr: rr !== "" ? parseInt(rr) : "",
+            spo2: spo2 !== "" ? parseInt(spo2) : "",
+            suplemenO2: suplemenO2,
+            suhu: suhu !== "" ? parseFloat(suhu) : "",
+            sistolik: sistolik !== "" ? parseInt(sistolik) : "",
+            diastolik: diastolik !== "" ? parseInt(diastolik) : "",
+            nadi: nadi !== "" ? parseInt(nadi) : "",
+            avpu: avpu,
+            meowsScore: currentMeows.score,
+            triageRisk: currentMeows.risk,
             statusDiagnosis: "Sudah Diperiksa"
           };
         }
         return p;
       })
     );
+    setIsEditingAnthro(false);
+    setIsEditingVitals(false);
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 3000);
   };
 
-  const guidance = getNEWSGuidance(activePatient?.triageRisk);
+  const guidance = getMEOWSGuidance(currentMeows.risk);
+  const currentBmi = calcBMI(beratBadan, tinggiBadan);
+  const currentBmiCat = getBMICategory(currentBmi);
   const bmiVal = calcBMI(activePatient?.beratBadan, activePatient?.tinggiBadan);
   const bmiCat = getBMICategory(bmiVal);
 
   return (
     <div className="row g-4">
-      {/* Patient List (Ordered by Severity NEWS) */}
+      {/* Patient List (Ordered by Severity MEOWS) */}
       <div className="col-12 col-lg-3">
         <div
           className="rounded-3 shadow-sm p-3 bg-white"
@@ -551,7 +770,7 @@ function DiagnoseWorkspace({ patients, setPatients, selectedId, setSelectedId })
           </h6>
           <div className="d-flex flex-column gap-2" style={{ maxHeight: "65vh", overflowY: "auto" }}>
             {[...patients]
-              .sort((a, b) => b.newsScore - a.newsScore)
+              .sort((a, b) => b.meowsScore - a.meowsScore)
               .map((p) => {
                 const isActive = p.id === activePatient?.id;
                 const hasDiagnosis = p.statusDiagnosis === "Sudah Diperiksa";
@@ -579,7 +798,7 @@ function DiagnoseWorkspace({ patients, setPatients, selectedId, setSelectedId })
                           fontSize: 10
                         }}
                       >
-                        NEWS: {p.newsScore}
+                        MEOWS: {p.meowsScore}
                       </span>
                     </div>
                     <div className="d-flex align-items-center justify-content-between text-muted" style={{ fontSize: 11 }}>
@@ -605,7 +824,7 @@ function DiagnoseWorkspace({ patients, setPatients, selectedId, setSelectedId })
             {saveSuccess && (
               <div className="alert alert-success d-flex align-items-center gap-2 mb-3" style={{ fontSize: 13, borderRadius: 8 }}>
                 <i className="bi bi-check-circle-fill" />
-                Diagnosis dan rencana terapi untuk <strong>{activePatient.nama}</strong> berhasil disimpan!
+                Diagnosis dan tanda vital untuk <strong>{activePatient.nama}</strong> berhasil disimpan!
               </div>
             )}
 
@@ -634,11 +853,11 @@ function DiagnoseWorkspace({ patients, setPatients, selectedId, setSelectedId })
                 <div
                   className="rounded-3 p-3 text-center h-100 d-flex flex-column justify-content-center align-items-center"
                   style={{
-                    background: activePatient.triageRisk === "High" ? "#fef2f2" : activePatient.triageRisk === "Medium" ? "#fffbeb" : "#f0fdf4",
-                    border: `1.5px solid ${activePatient.triageRisk === "High" ? "#fee2e2" : activePatient.triageRisk === "Medium" ? "#fef3c7" : "#dcfce7"}`
+                    background: currentMeows.risk === "High" ? "#fef2f2" : currentMeows.risk === "Medium" ? "#fffbeb" : "#f0fdf4",
+                    border: `1.5px solid ${currentMeows.risk === "High" ? "#fee2e2" : currentMeows.risk === "Medium" ? "#fef3c7" : "#dcfce7"}`
                   }}
                 >
-                  <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b" }} className="mb-2">TRIAL & STATUS NEWS</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b" }} className="mb-2">STATUS MEOWS</div>
                   <div
                     className="d-inline-flex align-items-center justify-content-center rounded-circle mb-2"
                     style={{
@@ -650,10 +869,10 @@ function DiagnoseWorkspace({ patients, setPatients, selectedId, setSelectedId })
                       fontSize: 26,
                     }}
                   >
-                    {activePatient.newsScore}
+                    {currentMeows.score}
                   </div>
                   <h6 className="fw-bold mb-0" style={{ color: guidance.color }}>
-                    Resiko {activePatient.triageRisk === "High" ? "Tinggi" : activePatient.triageRisk === "Medium" ? "Sedang" : "Rendah"}
+                    Resiko {currentMeows.risk === "High" ? "Tinggi" : currentMeows.risk === "Medium" ? "Sedang" : "Rendah"}
                   </h6>
                   <span className="text-muted mt-1" style={{ fontSize: 10 }}>Ditriase: {activePatient.tglTriage || "-"}</span>
                 </div>
@@ -664,7 +883,7 @@ function DiagnoseWorkspace({ patients, setPatients, selectedId, setSelectedId })
                 <div className="rounded-3 p-3 h-100 bg-light border">
                   <div className="fw-bold mb-2 text-dark" style={{ fontSize: 12 }}>
                     <i className="bi bi-shield-exclamation me-1" />
-                    Rekomendasi Triage NEWS:
+                    Rekomendasi Triage MEOWS:
                   </div>
                   <ul className="ps-3 mb-0" style={{ fontSize: 12, color: "#334155" }}>
                     {guidance.points.map((pt, index) => (
@@ -691,56 +910,171 @@ function DiagnoseWorkspace({ patients, setPatients, selectedId, setSelectedId })
 
                 {/* 2. Data Fisik & Antropometri */}
                 <div className="mb-4">
-                  <div className="d-flex align-items-center gap-2 mb-3" style={{ color: "#312e81" }}>
-                    <div style={{ width: 4, height: 16, background: "#4f46e5", borderRadius: 2 }} />
-                    <span className="fw-bold" style={{ fontSize: 14 }}>Parameter Antropometri / Fisik</span>
+                  <div className="d-flex align-items-center justify-content-between mb-3">
+                    <div className="d-flex align-items-center gap-2" style={{ color: "#312e81" }}>
+                      <div style={{ width: 4, height: 16, background: "#4f46e5", borderRadius: 2 }} />
+                      <span className="fw-bold" style={{ fontSize: 14 }}>Parameter Antropometri / Fisik</span>
+                    </div>
+                    {isEditingAnthro ? (
+                      <div className="d-flex gap-2">
+                        <button
+                          className="btn btn-sm btn-success py-1 px-2 d-flex align-items-center gap-1"
+                          style={{ fontSize: 12, background: "#10b981", border: "none", color: "#fff" }}
+                          onClick={handleSaveAnthro}
+                        >
+                          <i className="bi bi-check-lg" /> Simpan
+                        </button>
+                        <button
+                          className="btn btn-sm btn-outline-secondary py-1 px-2 d-flex align-items-center gap-1"
+                          style={{ fontSize: 12 }}
+                          onClick={handleCancelAnthro}
+                        >
+                          <i className="bi bi-x-lg" /> Batal
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        className="btn btn-sm btn-outline-primary py-1 px-2 d-flex align-items-center gap-1"
+                        style={{ fontSize: 12, borderColor: "#4f46e5", color: "#4f46e5" }}
+                        onClick={() => setIsEditingAnthro(true)}
+                      >
+                        <i className="bi bi-pencil-square" /> Edit Parameter
+                      </button>
+                    )}
                   </div>
+
                   <div className="row g-3">
+                    {/* Berat Badan */}
                     <div className="col-4 col-sm-3">
-                      <div className="border rounded p-2 text-center bg-light">
-                        <div className="text-muted" style={{ fontSize: 10 }}>Berat Badan</div>
-                        <div className="fw-bold" style={{ fontSize: 13 }}>{activePatient.beratBadan ? `${activePatient.beratBadan} kg` : "-"}</div>
+                      <div className={`border rounded p-2 text-center ${isEditingAnthro ? "bg-white shadow-sm" : "bg-light"}`}>
+                        <label className="text-muted d-block mb-1" style={{ fontSize: 10 }}>Berat Badan (kg)</label>
+                        {isEditingAnthro ? (
+                          <input
+                            type="number"
+                            className="form-control form-control-sm text-center fw-bold"
+                            style={{ fontSize: 12, padding: "2px 5px", height: 26 }}
+                            value={beratBadan}
+                            onChange={(e) => setBeratBadan(e.target.value)}
+                          />
+                        ) : (
+                          <div className="fw-bold" style={{ fontSize: 13, height: 26, lineHeight: "26px" }}>
+                            {activePatient.beratBadan ? `${activePatient.beratBadan} kg` : "-"}
+                          </div>
+                        )}
                       </div>
                     </div>
+
+                    {/* Tinggi Badan */}
                     <div className="col-4 col-sm-3">
-                      <div className="border rounded p-2 text-center bg-light">
-                        <div className="text-muted" style={{ fontSize: 10 }}>Tinggi Badan</div>
-                        <div className="fw-bold" style={{ fontSize: 13 }}>{activePatient.tinggiBadan ? `${activePatient.tinggiBadan} cm` : "-"}</div>
+                      <div className={`border rounded p-2 text-center ${isEditingAnthro ? "bg-white shadow-sm" : "bg-light"}`}>
+                        <label className="text-muted d-block mb-1" style={{ fontSize: 10 }}>Tinggi Badan (cm)</label>
+                        {isEditingAnthro ? (
+                          <input
+                            type="number"
+                            className="form-control form-control-sm text-center fw-bold"
+                            style={{ fontSize: 12, padding: "2px 5px", height: 26 }}
+                            value={tinggiBadan}
+                            onChange={(e) => setTinggiBadan(e.target.value)}
+                          />
+                        ) : (
+                          <div className="fw-bold" style={{ fontSize: 13, height: 26, lineHeight: "26px" }}>
+                            {activePatient.tinggiBadan ? `${activePatient.tinggiBadan} cm` : "-"}
+                          </div>
+                        )}
                       </div>
                     </div>
+
+                    {/* BMI / IMT */}
                     <div className="col-4 col-sm-3">
                       <div className="border rounded p-2 text-center bg-light">
-                        <div className="text-muted" style={{ fontSize: 10 }}>BMI / IMT</div>
-                        <div className={`fw-bold badge ${getBMIBadgeColor(bmiVal)}`} style={{ fontSize: 11, display: "block", marginTop: 2 }}>
-                          {bmiVal ? `${bmiVal}` : "-"}
+                        <label className="text-muted d-block mb-1" style={{ fontSize: 10 }}>BMI / IMT</label>
+                        <div className={`fw-bold badge ${getBMIBadgeColor(isEditingAnthro ? currentBmi : bmiVal)}`} style={{ fontSize: 11, display: "block", padding: "6px", height: 26, lineHeight: "14px" }}>
+                          {isEditingAnthro ? (currentBmi ? `${currentBmi}` : "-") : (bmiVal ? `${bmiVal}` : "-")}
                         </div>
                       </div>
                     </div>
+
+                    {/* Kategori BMI */}
                     <div className="col-12 col-sm-3">
                       <div className="border rounded p-2 text-center bg-light">
-                        <div className="text-muted" style={{ fontSize: 10 }}>Kategori BMI</div>
-                        <div className="fw-semibold text-truncate" style={{ fontSize: 11 }} title={bmiCat}>
-                          {bmiCat || "-"}
+                        <label className="text-muted d-block mb-1" style={{ fontSize: 10 }}>Kategori BMI</label>
+                        <div className="fw-semibold text-truncate" style={{ fontSize: 11, height: 26, lineHeight: "26px" }} title={isEditingAnthro ? currentBmiCat : bmiCat}>
+                          {(isEditingAnthro ? currentBmiCat : bmiCat) || "-"}
                         </div>
                       </div>
                     </div>
                     
+                    {/* Lingkar Kepala */}
                     <div className="col-4">
-                      <div className="border rounded p-2 text-center">
-                        <div className="text-muted" style={{ fontSize: 10 }}>Lingkar Kepala</div>
-                        <div className="fw-bold" style={{ fontSize: 13 }}>{activePatient.lingkarKepala ? `${activePatient.lingkarKepala} cm` : "-"}</div>
+                      <div className={`border rounded p-2 text-center ${isEditingAnthro ? "bg-white shadow-sm" : "bg-light"}`}>
+                        <label className="text-muted d-block mb-1" style={{ fontSize: 10 }}>Lingkar Kepala</label>
+                        {isEditingAnthro ? (
+                          <input
+                            type="number"
+                            className="form-control form-control-sm text-center fw-bold"
+                            style={{ fontSize: 12, padding: "2px 5px", height: 26 }}
+                            value={lingkarKepala}
+                            onChange={(e) => setLingkarKepala(e.target.value)}
+                          />
+                        ) : (
+                          <div className="fw-bold" style={{ fontSize: 13, height: 26, lineHeight: "26px" }}>
+                            {activePatient.lingkarKepala ? `${activePatient.lingkarKepala} cm` : "-"}
+                          </div>
+                        )}
                       </div>
                     </div>
+
+                    {/* Lingkar Lengan */}
                     <div className="col-4">
-                      <div className="border rounded p-2 text-center">
-                        <div className="text-muted" style={{ fontSize: 10 }}>Lingkar Lengan (LiLA)</div>
-                        <div className="fw-bold" style={{ fontSize: 13 }}>{activePatient.lingkarLengan ? `${activePatient.lingkarLengan} cm` : "-"}</div>
+                      <div className={`border rounded p-2 text-center ${isEditingAnthro ? "bg-white shadow-sm" : "bg-light"}`}>
+                        <label className="text-muted d-block mb-1" style={{ fontSize: 10 }}>Lingkar Lengan (LiLA)</label>
+                        {isEditingAnthro ? (
+                          <input
+                            type="number"
+                            step="0.1"
+                            className="form-control form-control-sm text-center fw-bold"
+                            style={{ fontSize: 12, padding: "2px 5px", height: 26 }}
+                            value={lingkarLengan}
+                            onChange={(e) => setLingkarLengan(e.target.value)}
+                          />
+                        ) : (
+                          <div className="fw-bold" style={{ fontSize: 13, height: 26, lineHeight: "26px" }}>
+                            {activePatient.lingkarLengan ? `${activePatient.lingkarLengan} cm` : "-"}
+                          </div>
+                        )}
                       </div>
                     </div>
+
+                    {/* Golongan Darah */}
                     <div className="col-4">
-                      <div className="border rounded p-2 text-center">
-                        <div className="text-muted" style={{ fontSize: 10 }}>Golongan Darah</div>
-                        <div className="fw-bold" style={{ fontSize: 13 }}>{activePatient.golDarah || "-"}</div>
+                      <div className={`border rounded p-2 text-center ${isEditingAnthro ? "bg-white shadow-sm" : "bg-light"}`}>
+                        <label className="text-muted d-block mb-1" style={{ fontSize: 10 }}>Golongan Darah</label>
+                        {isEditingAnthro ? (
+                          <select
+                            className="form-select form-select-sm text-center fw-bold p-0"
+                            style={{ fontSize: 12, height: 26 }}
+                            value={golDarah}
+                            onChange={(e) => setGolDarah(e.target.value)}
+                          >
+                            <option value="">-</option>
+                            <option value="A">A</option>
+                            <option value="B">B</option>
+                            <option value="AB">AB</option>
+                            <option value="O">O</option>
+                            <option value="A+">A+</option>
+                            <option value="A-">A-</option>
+                            <option value="B+">B+</option>
+                            <option value="B-">B-</option>
+                            <option value="AB+">AB+</option>
+                            <option value="AB-">AB-</option>
+                            <option value="O+">O+</option>
+                            <option value="O-">O-</option>
+                          </select>
+                        ) : (
+                          <div className="fw-bold" style={{ fontSize: 13, height: 26, lineHeight: "26px" }}>
+                            {activePatient.golDarah || "-"}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -748,31 +1082,231 @@ function DiagnoseWorkspace({ patients, setPatients, selectedId, setSelectedId })
 
                 {/* 3. Parameter Tanda Vital */}
                 <div className="mb-4">
-                  <div className="d-flex align-items-center gap-2 mb-3" style={{ color: "#312e81" }}>
-                    <div style={{ width: 4, height: 16, background: "#4f46e5", borderRadius: 2 }} />
-                    <span className="fw-bold" style={{ fontSize: 14 }}>Tanda-tanda Vital (Vitals Monitor)</span>
+                  <div className="d-flex align-items-center justify-content-between mb-3">
+                    <div className="d-flex align-items-center gap-2" style={{ color: "#312e81" }}>
+                      <div style={{ width: 4, height: 16, background: "#4f46e5", borderRadius: 2 }} />
+                      <span className="fw-bold" style={{ fontSize: 14 }}>Tanda-tanda Vital (Vitals Monitor)</span>
+                    </div>
+                    {isEditingVitals ? (
+                      <div className="d-flex gap-2">
+                        <button
+                          className="btn btn-sm btn-success py-1 px-2 d-flex align-items-center gap-1"
+                          style={{ fontSize: 12, background: "#10b981", border: "none", color: "#fff" }}
+                          onClick={handleSaveVitals}
+                        >
+                          <i className="bi bi-check-lg" /> Simpan
+                        </button>
+                        <button
+                          className="btn btn-sm btn-outline-secondary py-1 px-2 d-flex align-items-center gap-1"
+                          style={{ fontSize: 12 }}
+                          onClick={handleCancelVitals}
+                        >
+                          <i className="bi bi-x-lg" /> Batal
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        className="btn btn-sm btn-outline-primary py-1 px-2 d-flex align-items-center gap-1"
+                        style={{ fontSize: 12, borderColor: "#4f46e5", color: "#4f46e5" }}
+                        onClick={() => setIsEditingVitals(true)}
+                      >
+                        <i className="bi bi-pencil-square" /> Edit Vital
+                      </button>
+                    )}
                   </div>
 
                   <div className="row g-2">
-                    {[
-                      { label: "Resp. Rate (RR)", value: activePatient.rr ? `${activePatient.rr} x/mnt` : "-", icon: "bi-lungs" },
-                      { label: "Saturasi SpO2", value: activePatient.spo2 ? `${activePatient.spo2} %` : "-", icon: "bi-activity" },
-                      { label: "Terapi Oksigen", value: activePatient.suplemenO2 || "-", icon: "bi-heart-arrow" },
-                      { label: "Suhu Tubuh", value: activePatient.suhu ? `${activePatient.suhu} °C` : "-", icon: "bi-thermometer-half" },
-                      { label: "Tekanan Darah", value: activePatient.sistolik ? `${activePatient.sistolik}/${activePatient.diastolik} mmHg` : "-", icon: "bi-heart-pulse" },
-                      { label: "Nadi / HR", value: activePatient.nadi ? `${activePatient.nadi} x/mnt` : "-", icon: "bi-droplet-half" },
-                      { label: "Kesadaran (AVPU)", value: activePatient.avpu || "-", icon: "bi-brain" }
-                    ].map((vt) => (
-                      <div key={vt.label} className="col-6 col-sm-4 col-md-3">
-                        <div className="border rounded p-2 bg-light d-flex align-items-center gap-2">
-                          <i className={`bi ${vt.icon}`} style={{ color: "#4f46e5", fontSize: 16 }} />
-                          <div>
-                            <div className="text-muted" style={{ fontSize: 9 }}>{vt.label}</div>
-                            <div className="fw-bold" style={{ fontSize: 12 }}>{vt.value}</div>
-                          </div>
+                    {/* RR */}
+                    <div className="col-6 col-sm-4 col-md-3">
+                      <div className={`border rounded p-2 d-flex align-items-center gap-2 ${isEditingVitals ? "bg-white shadow-sm" : "bg-light"}`}>
+                        <i className="bi bi-lungs" style={{ color: "#4f46e5", fontSize: 16 }} />
+                        <div className="flex-grow-1">
+                          <label className="text-muted" style={{ fontSize: 9, display: "block" }}>Resp. Rate (RR)</label>
+                          {isEditingVitals ? (
+                            <div className="d-flex align-items-center gap-1">
+                              <input
+                                type="number"
+                                className="form-control form-control-sm text-center fw-bold p-1"
+                                style={{ fontSize: 12, height: 26 }}
+                                value={rr}
+                                onChange={(e) => setRr(e.target.value)}
+                              />
+                              <span style={{ fontSize: 9 }} className="text-muted">/m</span>
+                            </div>
+                          ) : (
+                            <div className="fw-bold" style={{ fontSize: 12, height: 26, lineHeight: "26px" }}>
+                              {activePatient.rr ? `${activePatient.rr} x/mnt` : "-"}
+                            </div>
+                          )}
                         </div>
                       </div>
-                    ))}
+                    </div>
+
+                    {/* SpO2 */}
+                    <div className="col-6 col-sm-4 col-md-3">
+                      <div className={`border rounded p-2 d-flex align-items-center gap-2 ${isEditingVitals ? "bg-white shadow-sm" : "bg-light"}`}>
+                        <i className="bi bi-activity" style={{ color: "#4f46e5", fontSize: 16 }} />
+                        <div className="flex-grow-1">
+                          <label className="text-muted" style={{ fontSize: 9, display: "block" }}>Saturasi SpO2</label>
+                          {isEditingVitals ? (
+                            <div className="d-flex align-items-center gap-1">
+                              <input
+                                type="number"
+                                className="form-control form-control-sm text-center fw-bold p-1"
+                                style={{ fontSize: 12, height: 26 }}
+                                value={spo2}
+                                onChange={(e) => setSpo2(e.target.value)}
+                              />
+                              <span style={{ fontSize: 9 }} className="text-muted">%</span>
+                            </div>
+                          ) : (
+                            <div className="fw-bold" style={{ fontSize: 12, height: 26, lineHeight: "26px" }}>
+                              {activePatient.spo2 ? `${activePatient.spo2} %` : "-"}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Terapi Oksigen */}
+                    <div className="col-6 col-sm-4 col-md-3">
+                      <div className={`border rounded p-2 d-flex align-items-center gap-2 ${isEditingVitals ? "bg-white shadow-sm" : "bg-light"}`}>
+                        <i className="bi bi-heart-arrow" style={{ color: "#4f46e5", fontSize: 16 }} />
+                        <div className="flex-grow-1">
+                          <label className="text-muted" style={{ fontSize: 9, display: "block" }}>Terapi Oksigen</label>
+                          {isEditingVitals ? (
+                            <select
+                              className="form-select form-select-sm fw-bold p-1"
+                              style={{ fontSize: 11, height: 26 }}
+                              value={suplemenO2}
+                              onChange={(e) => setSuplemenO2(e.target.value)}
+                            >
+                              <option value="Tidak">Tidak</option>
+                              <option value="Ya">Ya</option>
+                            </select>
+                          ) : (
+                            <div className="fw-bold" style={{ fontSize: 12, height: 26, lineHeight: "26px" }}>
+                              {activePatient.suplemenO2 || "-"}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Suhu */}
+                    <div className="col-6 col-sm-4 col-md-3">
+                      <div className={`border rounded p-2 d-flex align-items-center gap-2 ${isEditingVitals ? "bg-white shadow-sm" : "bg-light"}`}>
+                        <i className="bi bi-thermometer-half" style={{ color: "#4f46e5", fontSize: 16 }} />
+                        <div className="flex-grow-1">
+                          <label className="text-muted" style={{ fontSize: 9, display: "block" }}>Suhu Tubuh</label>
+                          {isEditingVitals ? (
+                            <div className="d-flex align-items-center gap-1">
+                              <input
+                                type="number"
+                                step="0.1"
+                                className="form-control form-control-sm text-center fw-bold p-1"
+                                style={{ fontSize: 12, height: 26 }}
+                                value={suhu}
+                                onChange={(e) => setSuhu(e.target.value)}
+                              />
+                              <span style={{ fontSize: 9 }} className="text-muted">°C</span>
+                            </div>
+                          ) : (
+                            <div className="fw-bold" style={{ fontSize: 12, height: 26, lineHeight: "26px" }}>
+                              {activePatient.suhu ? `${activePatient.suhu} °C` : "-"}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Tekanan Darah (Sistolik / Diastolik) */}
+                    <div className="col-6 col-sm-4 col-md-3">
+                      <div className={`border rounded p-2 d-flex align-items-center gap-2 ${isEditingVitals ? "bg-white shadow-sm" : "bg-light"}`}>
+                        <i className="bi bi-heart-pulse" style={{ color: "#4f46e5", fontSize: 16 }} />
+                        <div className="flex-grow-1">
+                          <label className="text-muted" style={{ fontSize: 9, display: "block" }}>Tekanan Darah</label>
+                          {isEditingVitals ? (
+                            <div className="d-flex align-items-center gap-1">
+                              <input
+                                type="number"
+                                placeholder="Sys"
+                                className="form-control form-control-sm text-center fw-bold p-1"
+                                style={{ fontSize: 11, height: 26, minWidth: 0 }}
+                                value={sistolik}
+                                onChange={(e) => setSistolik(e.target.value)}
+                              />
+                              <span style={{ fontSize: 9 }} className="text-muted">/</span>
+                              <input
+                                type="number"
+                                placeholder="Dias"
+                                className="form-control form-control-sm text-center fw-bold p-1"
+                                style={{ fontSize: 11, height: 26, minWidth: 0 }}
+                                value={diastolik}
+                                onChange={(e) => setDiastolik(e.target.value)}
+                              />
+                            </div>
+                          ) : (
+                            <div className="fw-bold" style={{ fontSize: 12, height: 26, lineHeight: "26px" }}>
+                              {activePatient.sistolik && activePatient.diastolik ? `${activePatient.sistolik}/${activePatient.diastolik} mmHg` : "-"}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Nadi / HR */}
+                    <div className="col-6 col-sm-4 col-md-3">
+                      <div className={`border rounded p-2 d-flex align-items-center gap-2 ${isEditingVitals ? "bg-white shadow-sm" : "bg-light"}`}>
+                        <i className="bi bi-droplet-half" style={{ color: "#4f46e5", fontSize: 16 }} />
+                        <div className="flex-grow-1">
+                          <label className="text-muted" style={{ fontSize: 9, display: "block" }}>Nadi / HR</label>
+                          {isEditingVitals ? (
+                            <div className="d-flex align-items-center gap-1">
+                              <input
+                                type="number"
+                                className="form-control form-control-sm text-center fw-bold p-1"
+                                style={{ fontSize: 12, height: 26 }}
+                                value={nadi}
+                                onChange={(e) => setNadi(e.target.value)}
+                              />
+                              <span style={{ fontSize: 9 }} className="text-muted">/m</span>
+                            </div>
+                          ) : (
+                            <div className="fw-bold" style={{ fontSize: 12, height: 26, lineHeight: "26px" }}>
+                              {activePatient.nadi ? `${activePatient.nadi} x/mnt` : "-"}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* AVPU */}
+                    <div className="col-6 col-sm-4 col-md-3">
+                      <div className={`border rounded p-2 d-flex align-items-center gap-2 ${isEditingVitals ? "bg-white shadow-sm" : "bg-light"}`}>
+                        <i className="bi bi-brain" style={{ color: "#4f46e5", fontSize: 16 }} />
+                        <div className="flex-grow-1">
+                          <label className="text-muted" style={{ fontSize: 9, display: "block" }}>Kesadaran</label>
+                          {isEditingVitals ? (
+                            <select
+                              className="form-select form-select-sm fw-bold p-1"
+                              style={{ fontSize: 11, height: 26 }}
+                              value={avpu}
+                              onChange={(e) => setAvpu(e.target.value)}
+                            >
+                              <option value="Alert">Alert (A)</option>
+                              <option value="Voice">Voice (V)</option>
+                              <option value="Pain">Pain (P)</option>
+                              <option value="Unresponsive">Unresponsive (U)</option>
+                            </select>
+                          ) : (
+                            <div className="fw-bold" style={{ fontSize: 12, height: 26, lineHeight: "26px" }}>
+                              {activePatient.avpu || "-"}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -785,53 +1319,21 @@ function DiagnoseWorkspace({ patients, setPatients, selectedId, setSelectedId })
                 >
                   <h6 className="fw-bold text-indigo mb-3" style={{ fontSize: 13, color: "#4338ca" }}>
                     <i className="bi bi-capsule-therapeutic me-1" />
-                    FORMULIR DIAGNOSIS & TERAPI
+                    FORMULIR DIAGNOSIS MEDIS
                   </h6>
-
-                  <div className="mb-3">
-                    <label className="form-label fw-semibold text-muted mb-1" style={{ fontSize: 12 }}>
-                      Diagnosis Utama / ICD-10 <span className="text-danger">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      className="form-control form-control-sm"
-                      placeholder="Masukkan diagnosa medis..."
-                      value={diagnosa}
-                      onChange={(e) => setDiagnosa(e.target.value)}
-                      style={{ fontSize: 13 }}
-                    />
-                  </div>
-
-                  <div className="mb-3">
-                    <label className="form-label fw-semibold text-muted mb-1" style={{ fontSize: 12 }}>
-                      Rencana Terapi & Tindakan <span className="text-danger">*</span>
-                    </label>
-                    <textarea
-                      className="form-control"
-                      rows={4}
-                      placeholder="Tuliskan resep obat, infus, terapi oksigen, atau instruksi rujukan medis..."
-                      value={rencanaTerapi}
-                      onChange={(e) => setRencanaTerapi(e.target.value)}
-                      style={{ fontSize: 13, resize: "none" }}
-                    />
-                  </div>
 
                   <div className="mb-4">
                     <label className="form-label fw-semibold text-muted mb-1" style={{ fontSize: 12 }}>
-                      Disposisi Akhir Pasien <span className="text-danger">*</span>
+                      Diagnosis Utama / ICD-10 <span className="text-danger">*</span>
                     </label>
-                    <select
-                      className="form-select form-select-sm"
-                      value={disposisi}
-                      onChange={(e) => setDisposisi(e.target.value)}
-                      style={{ fontSize: 13 }}
-                    >
-                      <option value="Rawat Jalan">Rawat Jalan / Discharge</option>
-                      <option value="Rawat Inap">Rawat Inap / Admitted</option>
-                      <option value="Observasi IGD">Observasi IGD</option>
-                      <option value="Rujuk RS Lain">Rujuk ke RS Lain</option>
-                      <option value="Pulang Paksa">Pulang Atas Permintaan Sendiri</option>
-                    </select>
+                    <textarea
+                      className="form-control"
+                      rows={6}
+                      placeholder="Masukkan diagnosa medis..."
+                      value={diagnosa}
+                      onChange={(e) => setDiagnosa(e.target.value)}
+                      style={{ fontSize: 13, resize: "none" }}
+                    />
                   </div>
 
                   <button
@@ -840,7 +1342,7 @@ function DiagnoseWorkspace({ patients, setPatients, selectedId, setSelectedId })
                     onClick={handleSave}
                   >
                     <i className="bi bi-file-earmark-medical-fill" />
-                    Simpan & Tanda Tangan
+                    Simpan Diagnosis & Tanda Vital
                   </button>
                 </div>
               </div>

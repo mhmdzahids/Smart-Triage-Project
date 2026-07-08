@@ -35,7 +35,7 @@ const MOCK_PATIENTS_NURSE = [
     diastolik: 80,
     nadi: 78,
     avpu: "Alert",
-    newsScore: 0,
+    meowsScore: 0,
     triageRisk: "Low",
     tglTriage: "2025-06-20"
   },
@@ -72,7 +72,7 @@ const MOCK_PATIENTS_NURSE = [
     diastolik: 65,
     nadi: 112,
     avpu: "Alert",
-    newsScore: 8, // NEWS Calculation: RR(2) + SpO2(2) + O2(2) + Temp(1) + SBP(1) + HR(2) = 10 (High Risk)
+    meowsScore: 8, // MEOWS Calculation: RR(2) + SpO2(2) + O2(2) + Temp(1) + SBP(1) + HR(2) = 10 (High Risk)
     triageRisk: "High",
     tglTriage: "2025-06-21"
   },
@@ -109,7 +109,7 @@ const MOCK_PATIENTS_NURSE = [
     diastolik: 55,
     nadi: 125,
     avpu: "Alert",
-    newsScore: 1,
+    meowsScore: 1,
     triageRisk: "Low",
     tglTriage: "2025-06-22"
   }
@@ -117,8 +117,8 @@ const MOCK_PATIENTS_NURSE = [
 
 const GOL_DARAH_OPTIONS = ["-", "A", "B", "AB", "O", "A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
 
-// ─── NEWS Scoring Logic ──────────────────────────────────────────────────────
-function calculateNEWS(vitals) {
+// ─── MEOWS Scoring Logic ──────────────────────────────────────────────────────
+function calculateMEOWS(vitals) {
   let score = 0;
   const { rr, spo2, suplemenO2, suhu, sistolik, nadi, avpu } = vitals;
 
@@ -184,10 +184,10 @@ function calculateNEWS(vitals) {
 
   // Risk Classification
   let risk = "Low";
-  // If NEWS is 0-4 it is Low.
-  // If NEWS is 5-6 OR there is a single parameter score of 3, it is Medium.
+  // If MEOWS is 0-4 it is Low.
+  // If MEOWS is 5-6 OR there is a single parameter score of 3, it is Medium.
   // Since we don't track individual sub-scores here, we will classify by total score:
-  // NEWS >= 7 -> High. NEWS 5-6 -> Medium. NEWS <= 4 -> Low.
+  // MEOWS >= 7 -> High. MEOWS 5-6 -> Medium. MEOWS <= 4 -> Low.
   if (score >= 7) {
     risk = "High";
   } else if (score >= 5) {
@@ -240,7 +240,7 @@ function downloadTriageCSV(patient) {
     "Keluhan Utama",
     "Berat Badan (kg)", "Tinggi Badan (cm)", "BMI / IMT", "Kategori BMI", "Lingkar Kepala (cm)", "Lingkar Lengan (cm)", "Gol Darah",
     "Respiratory Rate (x/mnt)", "SpO2 (%)", "Oksigen Tambahan", "Suhu (°C)", "Tekanan Darah Sistolik", "Tekanan Darah Diastolik", "Nadi (x/mnt)", "Kesadaran (AVPU)",
-    "NEWS Score", "Triage Risk Level", "Waktu Triase"
+    "MEOWS Score", "Triage Risk Level", "Waktu Triase"
   ];
   
   const bmi = calcBMI(patient.beratBadan, patient.tinggiBadan);
@@ -251,7 +251,7 @@ function downloadTriageCSV(patient) {
     patient.keluhan || "-",
     patient.beratBadan || "-", patient.tinggiBadan || "-", bmi || "-", bmiCat || "-", patient.lingkarKepala || "-", patient.lingkarLengan || "-", patient.golDarah || "-",
     patient.rr || "-", patient.spo2 || "-", patient.suplemenO2 || "-", patient.suhu || "-", patient.sistolik || "-", patient.diastolik || "-", patient.nadi || "-", patient.avpu || "-",
-    patient.newsScore !== undefined ? patient.newsScore : "-", patient.triageRisk || "-", patient.tglTriage || "-"
+    patient.meowsScore !== undefined ? patient.meowsScore : "-", patient.triageRisk || "-", patient.tglTriage || "-"
   ].map(val => typeof val === "string" ? `"${val.replace(/"/g, '""')}"` : val).join(",");
 
   const csv = [headers.join(","), row].join("\n");
@@ -373,16 +373,16 @@ function SidebarNurse({ activePage, setActivePage }) {
 
 // ─── Dashboard Subpage ───────────────────────────────────────────────────────
 function NurseDashboard({ patients, setActivePage, setSelectedId }) {
-  const triagedCount = patients.filter(p => p.newsScore !== undefined).length;
+  const triagedCount = patients.filter(p => p.meowsScore !== undefined).length;
   const highRiskCount = patients.filter(p => p.triageRisk === "High").length;
   const medRiskCount = patients.filter(p => p.triageRisk === "Medium").length;
   const lowRiskCount = patients.filter(p => p.triageRisk === "Low").length;
 
   const stats = [
     { label: "Pasien Ditriase", value: triagedCount, icon: "bi-clipboard2-check", color: "#0d9488", bg: "#f0fdfa" },
-    { label: "Resiko Tinggi (NEWS >= 7)", value: highRiskCount, icon: "bi-exclamation-octagon-fill", color: "#dc3545", bg: "#fdf2f2" },
-    { label: "Resiko Sedang (NEWS 5-6)", value: medRiskCount, icon: "bi-exclamation-triangle-fill", color: "#ffc107", bg: "#fffbeb" },
-    { label: "Resiko Rendah (NEWS 0-4)", value: lowRiskCount, icon: "bi-check-circle-fill", color: "#198754", bg: "#f0fdf4" }
+    { label: "Resiko Tinggi (MEOWS >= 7)", value: highRiskCount, icon: "bi-exclamation-octagon-fill", color: "#dc3545", bg: "#fdf2f2" },
+    { label: "Resiko Sedang (MEOWS 5-6)", value: medRiskCount, icon: "bi-exclamation-triangle-fill", color: "#ffc107", bg: "#fffbeb" },
+    { label: "Resiko Rendah (MEOWS 0-4)", value: lowRiskCount, icon: "bi-check-circle-fill", color: "#198754", bg: "#f0fdf4" }
   ];
 
   return (
@@ -455,8 +455,9 @@ function NurseDashboard({ patients, setActivePage, setSelectedId }) {
                 <th className="fw-semibold text-muted border-0 py-2">Tinggi / Berat</th>
                 <th className="fw-semibold text-muted border-0 py-2">Suhu</th>
                 <th className="fw-semibold text-muted border-0 py-2">SpO2 / Tensi</th>
-                <th className="fw-semibold text-muted border-0 py-2 text-center">NEWS Score</th>
+                <th className="fw-semibold text-muted border-0 py-2 text-center">MEOWS Score</th>
                 <th className="fw-semibold text-muted border-0 py-2 text-center">Triage Risk</th>
+                <th className="fw-semibold text-muted border-0 py-2">Diagnosis Dokter</th>
                 <th className="fw-semibold text-muted border-0 py-2 text-center">Aksi</th>
               </tr>
             </thead>
@@ -487,18 +488,18 @@ function NurseDashboard({ patients, setActivePage, setSelectedId }) {
                       )}
                     </td>
                     <td className="py-3 text-center">
-                      {p.newsScore !== undefined ? (
+                      {p.meowsScore !== undefined ? (
                         <span
                           className="badge"
                           style={{
-                            background: p.newsScore >= 7 ? "#fde8e8" : p.newsScore >= 5 ? "#fff8e1" : "#e6f4ea",
-                            color: p.newsScore >= 7 ? "#c53030" : p.newsScore >= 5 ? "#b7791f" : "#137333",
+                            background: p.meowsScore >= 7 ? "#fde8e8" : p.meowsScore >= 5 ? "#fff8e1" : "#e6f4ea",
+                            color: p.meowsScore >= 7 ? "#c53030" : p.meowsScore >= 5 ? "#b7791f" : "#137333",
                             fontSize: 13,
                             fontWeight: 600,
                             padding: "4px 8px"
                           }}
                         >
-                          {p.newsScore}
+                          {p.meowsScore}
                         </span>
                       ) : (
                         <span className="text-muted">-</span>
@@ -520,6 +521,17 @@ function NurseDashboard({ patients, setActivePage, setSelectedId }) {
                         </span>
                       ) : (
                         <span className="badge bg-secondary text-white">Belum Triase</span>
+                      )}
+                    </td>
+                    <td className="py-3">
+                      {p.statusDiagnosis === "Sudah Diperiksa" ? (
+                        <span className="badge bg-success-subtle text-success border border-success-subtle fw-semibold text-wrap d-inline-block p-2" style={{ fontSize: 11, maxWidth: 180 }}>
+                          {p.diagnosa || "Sudah Didiagnosa"}
+                        </span>
+                      ) : (
+                        <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle fw-medium d-inline-block p-2" style={{ fontSize: 11 }}>
+                          Belum Didiagnosa
+                        </span>
                       )}
                     </td>
                     <td className="py-3 text-center">
@@ -594,7 +606,7 @@ function TriageWorkspace({ patients, setPatients, selectedId, setSelectedId }) {
   const currentBmi = calcBMI(beratBadan, tinggiBadan);
   const currentBmiCat = getBMICategory(currentBmi);
 
-  const currentNews = calculateNEWS({
+  const currentMeows = calculateMEOWS({
     rr,
     spo2,
     suplemenO2,
@@ -626,8 +638,8 @@ function TriageWorkspace({ patients, setPatients, selectedId, setSelectedId }) {
             diastolik: parseInt(diastolik) || "",
             nadi: parseInt(nadi) || "",
             avpu: avpu,
-            newsScore: currentNews.score,
-            triageRisk: currentNews.risk,
+            meowsScore: currentMeows.score,
+            triageRisk: currentMeows.risk,
             tglTriage: new Date().toLocaleDateString("id-ID", {
               year: "numeric",
               month: "2-digit",
@@ -665,7 +677,7 @@ function TriageWorkspace({ patients, setPatients, selectedId, setSelectedId }) {
           <div className="d-flex flex-column gap-2" style={{ maxHeight: "65vh", overflowY: "auto" }}>
             {patients.map((p) => {
               const isActive = p.id === activePatient?.id;
-              const hasTriage = p.newsScore !== undefined;
+              const hasTriage = p.meowsScore !== undefined;
               return (
                 <button
                   key={p.id}
@@ -696,7 +708,7 @@ function TriageWorkspace({ patients, setPatients, selectedId, setSelectedId }) {
                   </div>
                   <div className="d-flex align-items-center justify-content-between text-muted" style={{ fontSize: 11 }}>
                     <span>{p.umur} thn • {p.jenisKelamin}</span>
-                    {hasTriage && <span className="fw-medium">NEWS: {p.newsScore}</span>}
+                    {hasTriage && <span className="fw-medium">MEOWS: {p.meowsScore}</span>}
                   </div>
                 </button>
               );
@@ -735,6 +747,24 @@ function TriageWorkspace({ patients, setPatients, selectedId, setSelectedId }) {
                 <i className="bi bi-download" />
                 Export CSV
               </button>
+            </div>
+
+            {/* Hasil Diagnosis Dokter */}
+            <div className="mb-4 p-3 rounded-3" style={{ background: activePatient.statusDiagnosis === "Sudah Diperiksa" ? "#f0fdf4" : "#fffbeb", border: `1.5px solid ${activePatient.statusDiagnosis === "Sudah Diperiksa" ? "#bbf7d0" : "#fef3c7"}` }}>
+              <div className="d-flex align-items-center gap-2 mb-2">
+                <i className={`bi ${activePatient.statusDiagnosis === "Sudah Diperiksa" ? "bi-check-circle-fill text-success" : "bi-hourglass-split text-warning"}`} style={{ fontSize: 16 }} />
+                <span className="fw-bold text-dark" style={{ fontSize: 13 }}>Status Diagnosa Dokter</span>
+              </div>
+              <div className="p-2 bg-white rounded border shadow-sm" style={{ fontSize: 13, minHeight: 40 }}>
+                {activePatient.statusDiagnosis === "Sudah Diperiksa" ? (
+                  <div>
+                    <div className="fw-semibold text-success mb-1">Diagnosis Utama / ICD-10:</div>
+                    <div className="text-dark fw-bold">{activePatient.diagnosa || "-"}</div>
+                  </div>
+                ) : (
+                  <span className="text-muted italic"><i className="bi bi-info-circle me-1" />Pasien belum didiagnosa oleh dokter jaga.</span>
+                )}
+              </div>
             </div>
 
             <div className="row g-4">
@@ -964,38 +994,38 @@ function TriageWorkspace({ patients, setPatients, selectedId, setSelectedId }) {
                 >
                   <div className="text-center mb-4">
                     <h6 className="fw-bold text-muted mb-3" style={{ fontSize: 13 }}>
-                      KALKULATOR NEWS (TRIAGE)
+                      KALKULATOR MEOWS (TRIAGE)
                     </h6>
                     <div
                       className="d-inline-flex align-items-center justify-content-center rounded-circle"
                       style={{
                         width: 90,
                         height: 90,
-                        background: getRiskColor(currentNews.risk) + "12",
-                        border: `4px solid ${getRiskColor(currentNews.risk)}`,
-                        color: getRiskColor(currentNews.risk),
+                        background: getRiskColor(currentMeows.risk) + "12",
+                        border: `4px solid ${getRiskColor(currentMeows.risk)}`,
+                        color: getRiskColor(currentMeows.risk),
                         fontWeight: 800,
                         fontSize: 32,
                         marginBottom: 12
                       }}
                     >
-                      {currentNews.score}
+                      {currentMeows.score}
                     </div>
-                    <h5 className="fw-bold mt-1" style={{ color: getRiskColor(currentNews.risk) }}>
-                      {currentNews.risk === "High" ? "Resiko Tinggi (Red)" : currentNews.risk === "Medium" ? "Resiko Sedang (Yellow)" : "Resiko Rendah (Green)"}
+                    <h5 className="fw-bold mt-1" style={{ color: getRiskColor(currentMeows.risk) }}>
+                      {currentMeows.risk === "High" ? "Resiko Tinggi (Red)" : currentMeows.risk === "Medium" ? "Resiko Sedang (Yellow)" : "Resiko Rendah (Green)"}
                     </h5>
                   </div>
 
                   {/* Clinical Response Guidance */}
                   <div className="p-3 rounded-3 mb-4 bg-white" style={{ border: "1px solid #e2e8f0", fontSize: 12 }}>
                     <div className="fw-bold mb-1 text-dark">Pedoman Respon Klinis:</div>
-                    {currentNews.risk === "High" ? (
+                    {currentMeows.risk === "High" ? (
                       <ul className="ps-3 mb-0 text-danger fw-semibold">
                         <li>Lakukan resusitasi & monitoring terus-menerus.</li>
                         <li>Laporkan ke dokter penanggung jawab segera (&lt; 5 mnt).</li>
                         <li>Aktifkan tim medis darurat (Code Blue jika perlu).</li>
                       </ul>
-                    ) : currentNews.risk === "Medium" ? (
+                    ) : currentMeows.risk === "Medium" ? (
                       <ul className="ps-3 mb-0 text-warning-emphasis">
                         <li>Konsultasikan ke tim medis / dokter jaga segera.</li>
                         <li>Monitor tanda vital setiap 1 jam.</li>
