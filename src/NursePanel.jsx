@@ -4,98 +4,7 @@ import { fetchActiveVisits, updateTriageDetails } from "./supabaseHelpers";
 
 const GOL_DARAH_OPTIONS = ["-", "A", "B", "AB", "O", "A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
 
-// ─── MEOWS Scoring Logic ──────────────────────────────────────────────────────
-function calculateMEOWS(vitals) {
-  let score = 0;
-  const { rr, spo2, suplemenO2, suhu, sistolik, nadi, avpu } = vitals;
 
-  // 1. Respiration Rate
-  const rrVal = parseInt(rr);
-  if (!isNaN(rrVal)) {
-    if (rrVal <= 8) score += 3;
-    else if (rrVal >= 9 && rrVal <= 11) score += 1;
-    else if (rrVal >= 12 && rrVal <= 20) score += 0;
-    else if (rrVal >= 21 && rrVal <= 24) score += 2;
-    else if (rrVal >= 25) score += 3;
-  }
-
-  // 2. SpO2
-  const spo2Val = parseInt(spo2);
-  if (!isNaN(spo2Val)) {
-    if (spo2Val <= 91) score += 3;
-    else if (spo2Val >= 92 && spo2Val <= 93) score += 2;
-    else if (spo2Val >= 94 && spo2Val <= 95) score += 1;
-    else if (spo2Val >= 96) score += 0;
-  }
-
-  // 3. Supplemental Oxygen
-  if (suplemenO2 === "Ya") {
-    score += 2;
-  }
-
-  // 4. Temperature
-  const tempVal = parseFloat(suhu);
-  if (!isNaN(tempVal)) {
-    if (tempVal <= 35.0) score += 3;
-    else if (tempVal >= 35.1 && tempVal <= 36.0) score += 1;
-    else if (tempVal >= 36.1 && tempVal <= 38.0) score += 0;
-    else if (tempVal >= 38.1 && tempVal <= 39.0) score += 1;
-    else if (tempVal >= 39.1) score += 3;
-  }
-
-  // 5. Systolic BP
-  const sbpVal = parseInt(sistolik);
-  if (!isNaN(sbpVal)) {
-    if (sbpVal <= 90) score += 3;
-    else if (sbpVal >= 91 && sbpVal <= 100) score += 2;
-    else if (sbpVal >= 101 && sbpVal <= 110) score += 1;
-    else if (sbpVal >= 111 && sbpVal <= 219) score += 0;
-    else if (sbpVal >= 220) score += 3;
-  }
-
-  // 6. Heart Rate
-  const hrVal = parseInt(nadi);
-  if (!isNaN(hrVal)) {
-    if (hrVal <= 40) score += 3;
-    else if (hrVal >= 41 && hrVal <= 50) score += 1;
-    else if (hrVal >= 51 && hrVal <= 90) score += 0;
-    else if (hrVal >= 91 && hrVal <= 110) score += 1;
-    else if (hrVal >= 111 && hrVal <= 130) score += 2;
-    else if (hrVal >= 131) score += 3;
-  }
-
-  // 7. AVPU (Consciousness)
-  if (avpu && avpu !== "Alert" && avpu !== "A") {
-    score += 3;
-  }
-
-  // Risk Classification
-  let risk = "Low";
-  // If MEOWS is 0-4 it is Low.
-  // If MEOWS is 5-6 OR there is a single parameter score of 3, it is Medium.
-  // Since we don't track individual sub-scores here, we will classify by total score:
-  // MEOWS >= 7 -> High. MEOWS 5-6 -> Medium. MEOWS <= 4 -> Low.
-  if (score >= 7) {
-    risk = "High";
-  } else if (score >= 5) {
-    risk = "Medium";
-  } else {
-    // Check if any single parameter is at extreme (would produce 3 points)
-    const hasExtreme = 
-      (rrVal <= 8 || rrVal >= 25) || 
-      (spo2Val <= 91) || 
-      (tempVal <= 35.0 || tempVal >= 39.1) || 
-      (sbpVal <= 90 || sbpVal >= 220) || 
-      (hrVal <= 40 || hrVal >= 131) || 
-      (avpu && avpu !== "Alert");
-      
-    if (hasExtreme) {
-      risk = "Medium";
-    }
-  }
-
-  return { score, risk };
-}
 
 // Helper: Calculate BMI
 function calcBMI(weight, height) {
@@ -129,7 +38,7 @@ function downloadTriageCSV(patient) {
     "Respiratory Rate (x/mnt)", "SpO2 (%)", "Oksigen Tambahan", "Suhu (°C)", "Tekanan Darah Sistolik", "Tekanan Darah Diastolik", "Nadi (x/mnt)", "Kesadaran (AVPU)",
     "MEOWS Score", "Triage Risk Level", "Waktu Triase"
   ];
-  
+
   const bmi = calcBMI(patient.beratBadan, patient.tinggiBadan);
   const bmiCat = getBMICategory(bmi);
 
@@ -395,13 +304,12 @@ function NurseDashboard({ patients, setActivePage, setSelectedId }) {
                     <td className="py-3 text-center">
                       {p.triageRisk ? (
                         <span
-                          className={`badge ${
-                            p.triageRisk === "High"
+                          className={`badge ${p.triageRisk === "High"
                               ? "bg-danger text-white"
                               : p.triageRisk === "Medium"
-                              ? "bg-warning text-dark"
-                              : "bg-success text-white"
-                          }`}
+                                ? "bg-warning text-dark"
+                                : "bg-success text-white"
+                            }`}
                           style={{ fontSize: 11, padding: "5px 10px" }}
                         >
                           {p.triageRisk === "High" ? "Resiko Tinggi (Red)" : p.triageRisk === "Medium" ? "Resiko Sedang (Yellow)" : "Resiko Rendah (Green)"}
@@ -467,6 +375,54 @@ function TriageWorkspace({ patients, setPatients, selectedId, setSelectedId }) {
   const [avpu, setAvpu] = useState(activePatient?.avpu || "Alert");
 
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [currentMeows, setCurrentMeows] = useState({ score: activePatient?.meowsScore || 0, risk: activePatient?.triageRisk || "Low" });
+
+  useEffect(() => {
+    let active = true;
+    async function calculateScore() {
+      const sbpVal = sistolik !== "" ? parseInt(sistolik) : 120;
+      const dbpVal = diastolik !== "" ? parseInt(diastolik) : 80;
+      const hrVal = nadi !== "" ? parseInt(nadi) : 80;
+      const rrVal = rr !== "" ? parseInt(rr) : 16;
+      const spo2Val = spo2 !== "" ? parseInt(spo2) : 98;
+      const tempVal = suhu !== "" ? parseFloat(suhu) : 36.5;
+      const avpuVal = avpu === "Alert" ? "A" : avpu === "Voice" ? "V" : avpu === "Pain" ? "P" : avpu === "Unresponsive" ? "U" : "A";
+
+      try {
+        const res = await fetch("http://localhost:8000/calculate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            respiratory_rate: rrVal,
+            oxygen_saturation: spo2Val,
+            oxygen_supplementation: suplemenO2 === "Ya",
+            temperature: tempVal,
+            systolic_bp: sbpVal,
+            diastolic_bp: dbpVal,
+            heart_rate: hrVal,
+            consciousness: avpuVal
+          })
+        });
+        if (!res.ok) throw new Error("API error");
+        const resData = await res.json();
+
+        if (active) {
+          let riskLabel = "Low";
+          if (resData.risk_level === "HIGH") riskLabel = "High";
+          else if (resData.risk_level === "MODERATE") riskLabel = "Medium";
+
+          setCurrentMeows({
+            score: resData.total_score,
+            risk: riskLabel
+          });
+        }
+      } catch (err) {
+        console.error("Error calculating MEOWS:", err);
+      }
+    }
+    calculateScore();
+    return () => { active = false; };
+  }, [rr, spo2, suplemenO2, suhu, sistolik, diastolik, nadi, avpu]);
 
   // Sync forms state when selected patient changes
   const handleSelectPatient = (p) => {
@@ -487,21 +443,16 @@ function TriageWorkspace({ patients, setPatients, selectedId, setSelectedId }) {
     setNadi(p.nadi || "");
     setAvpu(p.avpu || "Alert");
     setSaveSuccess(false);
+
+    setCurrentMeows({
+      score: p.meowsScore || 0,
+      risk: p.triageRisk || "Low"
+    });
   };
 
   // Live calculated variables
   const currentBmi = calcBMI(beratBadan, tinggiBadan);
   const currentBmiCat = getBMICategory(currentBmi);
-
-  const currentMeows = calculateMEOWS({
-    rr,
-    spo2,
-    suplemenO2,
-    suhu,
-    sistolik,
-    nadi,
-    avpu
-  });
 
   const handleSave = async () => {
     const triageData = {
@@ -512,7 +463,7 @@ function TriageWorkspace({ patients, setPatients, selectedId, setSelectedId }) {
       lingkarLengan: lingkarLengan !== "" ? parseFloat(lingkarLengan) : "",
       golDarah: golDarah,
       keluhan: keluhan,
-      
+
       rr: rr !== "" ? parseInt(rr) : "",
       spo2: spo2 !== "" ? parseInt(spo2) : "",
       suplemenO2: suplemenO2,
@@ -527,7 +478,7 @@ function TriageWorkspace({ patients, setPatients, selectedId, setSelectedId }) {
 
     try {
       await updateTriageDetails(activePatient.id, triageData);
-      setPatients((prev) => 
+      setPatients((prev) =>
         prev.map((p) => {
           if (p.id === activePatient.id) {
             return {
