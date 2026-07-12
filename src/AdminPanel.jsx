@@ -29,6 +29,30 @@ function calcUmur(tglLahir) {
   return age;
 }
 
+function getInitials(name) {
+  if (!name) return "";
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+  return parts[0] ? parts[0][0].toUpperCase() : "";
+}
+
+function formatArrivalTime(isoString) {
+  if (!isoString) return "";
+  const date = new Date(isoString);
+  const dateStr = date.toLocaleDateString("id-ID", {
+    day: "numeric",
+    month: "long",
+    year: "numeric"
+  });
+  const timeStr = date.toLocaleTimeString("id-ID", {
+    hour: "2-digit",
+    minute: "2-digit"
+  }).replace(".", ":");
+  return `${dateStr} • ${timeStr}`;
+}
+
 function downloadCSV(data) {
   const headers = [
     "ID","Nama","NIK","No BPJS","Tgl Lahir","Umur","Jenis Kelamin",
@@ -63,7 +87,7 @@ function StatusBadge({ status }) {
 }
 
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
-function Sidebar({ activePage, setActivePage }) {
+function Sidebar({ activePage, setActivePage, userName }) {
   const navItems = [
     { id: "dashboard", icon: "bi-speedometer2", label: "Dashboard" },
     { id: "pasien", icon: "bi-person-lines-fill", label: "Data Pasien" },
@@ -159,7 +183,7 @@ function Sidebar({ activePage, setActivePage }) {
             <i className="bi bi-person-fill" />
           </div>
           <div>
-            <div style={{ fontWeight: 600 }}>Admin RS</div>
+            <div style={{ fontWeight: 600 }}>Halo! Admin {userName || "User"}</div>
             <div style={{ opacity: 0.65 }}>Administrator</div>
           </div>
         </div>
@@ -215,12 +239,190 @@ function Topbar({ title, onLogout }) {
 }
 
 // ─── Page: Dashboard ──────────────────────────────────────────────────────────
-function DashboardPage({ patients, setActivePage }) {
+function DashboardPage({ patients, setActivePage, isMobile, userName }) {
   const byStatus = patients.reduce((acc, p) => {
     acc[p.statusPasien] = (acc[p.statusPasien] || 0) + 1;
     return acc;
   }, {});
 
+  if (isMobile) {
+    const stats = [
+      { label: "Total Pasien", value: patients.length, icon: "bi-people-fill", color: "#4f46e5", bg: "#eef2ff" },
+      { label: "Pasien BPJS", value: byStatus["BPJS"] || 0, icon: "bi-shield-fill-check", color: "#137333", bg: "#e6f4ea" },
+      { label: "Pasien Umum", value: byStatus["Umum"] || 0, icon: "bi-person-fill", color: "#64748b", bg: "#f1f5f9" },
+      { label: "Asuransi", value: byStatus["Asuransi"] || 0, icon: "bi-shield-fill", color: "#0284c7", bg: "#e0f2fe" },
+    ];
+
+    // Get recent 3 patients
+    const recentPatients = patients.slice(0, 3);
+
+    return (
+      <div style={{ background: "#f8fafc", minHeight: "100vh", padding: "10px 5px" }}>
+        {/* Custom Greeting Header */}
+        <div className="mb-4 px-1">
+          <h3 className="fw-bold mb-1" style={{ color: "#1e293b", fontSize: "24px" }}>Halo, {userName || "Admin RS"}</h3>
+          <div className="text-muted d-flex align-items-center gap-1.5" style={{ fontSize: "13px", fontWeight: "500" }}>
+            <i className="bi bi-calendar3 text-secondary me-1" />
+            {new Date().toLocaleDateString("id-ID", {
+              weekday: "long",
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            })}
+          </div>
+        </div>
+
+        {/* 2x2 Stats Cards Grid */}
+        <div className="row g-3 mb-4">
+          {stats.map((s) => (
+            <div key={s.label} className="col-6">
+              <div
+                className="card border-0 shadow-sm rounded-4 p-3 h-100 bg-white"
+                style={{ border: "1px solid #f1f5f9" }}
+              >
+                <div className="d-flex align-items-center justify-content-start mb-3">
+                  <div
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 10,
+                      background: s.bg,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <i
+                      className={`bi ${s.icon}`}
+                      style={{ fontSize: 16, color: s.color }}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <div className="text-muted fw-semibold mb-1" style={{ fontSize: 11 }}>
+                    {s.label}
+                  </div>
+                  <div className="fw-bold" style={{ fontSize: 24, color: "#1e293b", lineHeight: 1.1 }}>
+                    {s.value}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Recent Patients Section */}
+        <div className="mb-4">
+          <div className="d-flex align-items-center justify-content-between mb-3 px-1">
+            <h5 className="fw-bold mb-0" style={{ color: "#1e293b", fontSize: "16px" }}>
+              Pasien Terbaru
+            </h5>
+            <button
+              className="btn btn-link p-0 text-decoration-none fw-semibold"
+              style={{ color: "#4f46e5", fontSize: "13px" }}
+              onClick={() => setActivePage("pasien")}
+            >
+              Lihat Semua
+            </button>
+          </div>
+
+          {/* Patient Stack */}
+          {recentPatients.length === 0 ? (
+            <div className="text-center py-4 bg-white rounded-4 shadow-sm text-muted" style={{ fontSize: 12 }}>
+              Belum ada pasien terdaftar
+            </div>
+          ) : (
+            recentPatients.map((p) => {
+              // Status Badge mapping
+              let badgeColor = "#f1f5f9";
+              let badgeTextColor = "#64748b";
+              if (p.statusPasien === "BPJS") {
+                badgeColor = "#e6f4ea";
+                badgeTextColor = "#137333";
+              } else if (p.statusPasien === "Asuransi") {
+                badgeColor = "#eef2ff";
+                badgeTextColor = "#4f46e5";
+              }
+
+              return (
+                <div 
+                  key={p.id}
+                  className="card border-0 shadow-sm rounded-4 mb-2 bg-white"
+                  style={{ padding: "12px 16px", border: "1px solid #f1f5f9" }}
+                >
+                  <div className="d-flex align-items-center justify-content-between">
+                    <div className="d-flex align-items-center gap-3">
+                      {/* Avatar initials */}
+                      <div 
+                        className="fw-bold d-flex align-items-center justify-content-center"
+                        style={{
+                          width: 42,
+                          height: 42,
+                          borderRadius: "50%",
+                          background: p.statusPasien === "BPJS" ? "#e8f0fe" : "#f1f3f4",
+                          color: p.statusPasien === "BPJS" ? "#1a73e8" : "#5f6368",
+                          fontSize: 14
+                        }}
+                      >
+                        {getInitials(p.nama)}
+                      </div>
+                      
+                      {/* Name & Time */}
+                      <div>
+                        <div className="fw-bold" style={{ color: "#1e293b", fontSize: 14 }}>{p.nama}</div>
+                        <div className="text-muted" style={{ fontSize: 11, marginTop: 2 }}>
+                          {formatArrivalTime(p.arrival_time || p.tglDaftar)}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Badge & Chevron */}
+                    <div className="d-flex align-items-center gap-2">
+                      <span 
+                        className="badge text-uppercase fw-semibold"
+                        style={{
+                          background: badgeColor,
+                          color: badgeTextColor,
+                          fontSize: 10,
+                          padding: "4px 8px",
+                          borderRadius: 6
+                        }}
+                      >
+                        {p.statusPasien}
+                      </span>
+                      <i className="bi bi-chevron-right text-muted" style={{ fontSize: 14 }} />
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Floating Action Button (FAB) */}
+        <button
+          onClick={() => setActivePage("tambah")}
+          className="btn shadow-lg d-flex align-items-center justify-content-center"
+          style={{
+            position: "fixed",
+            bottom: "85px",
+            right: "20px",
+            width: "55px",
+            height: "55px",
+            borderRadius: "50%",
+            background: "#4f46e5",
+            color: "#fff",
+            zIndex: 999,
+            border: "none"
+          }}
+        >
+          <i className="bi bi-plus-lg" style={{ fontSize: 24 }} />
+        </button>
+      </div>
+    );
+  }
+
+  // Desktop view logic (kept original)
   const stats = [
     { label: "Total Pasien", value: patients.length, icon: "bi-people-fill", color: "#0f4c81", bg: "#e8f1fb" },
     { label: "Pasien BPJS", value: byStatus["BPJS"] || 0, icon: "bi-shield-check", color: "#198754", bg: "#e8f6ef" },
@@ -933,10 +1135,18 @@ function TambahPasienPage({ setPatients, setActivePage }) {
 }
 
 // ─── Main App ─────────────────────────────────────────────────────────────────
-export default function AdminPanel({ onLogout }) {
+export default function AdminPanel({ onLogout, userName }) {
   const [activePage, setActivePage] = useState("dashboard");
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   useEffect(() => {
     async function loadData() {
@@ -953,7 +1163,7 @@ export default function AdminPanel({ onLogout }) {
   }, []);
 
   const pages = {
-    dashboard: { title: "Dashboard", component: <DashboardPage patients={patients} setActivePage={setActivePage} /> },
+    dashboard: { title: "Dashboard", component: <DashboardPage patients={patients} setActivePage={setActivePage} isMobile={isMobile} userName={userName} /> },
     pasien: { title: "Data Pasien", component: <DataPasienPage patients={patients} setPatients={setPatients} /> },
     tambah: { title: "Tambah Pasien", component: <TambahPasienPage setPatients={setPatients} setActivePage={setActivePage} /> },
   };
@@ -973,12 +1183,43 @@ export default function AdminPanel({ onLogout }) {
       />
 
       <div style={{ background: "#f4f7fb", minHeight: "100vh" }}>
-        <Sidebar activePage={activePage} setActivePage={setActivePage} />
+        {!isMobile && (
+          <Sidebar activePage={activePage} setActivePage={setActivePage} userName={userName} />
+        )}
 
         {/* Main content area */}
-        <div style={{ marginLeft: 240 }}>
-          <Topbar title={current.title} onLogout={onLogout} />
-          <div className="p-4">
+        <div style={{ 
+          marginLeft: isMobile ? 0 : 240, 
+          paddingBottom: isMobile ? 80 : 0 
+        }}>
+          {!isMobile && <Topbar title={current.title} onLogout={onLogout} />}
+          
+          {/* Mobile Topbar for other pages */}
+          {isMobile && activePage !== "dashboard" && (
+            <div 
+              className="d-flex align-items-center justify-content-between px-3"
+              style={{
+                height: 55,
+                background: "#fff",
+                borderBottom: "1px solid #e2e8f0",
+                position: "sticky",
+                top: 0,
+                zIndex: 100
+              }}
+            >
+              <button 
+                className="btn btn-link p-0 text-dark" 
+                onClick={() => setActivePage("dashboard")}
+                style={{ fontSize: 20 }}
+              >
+                <i className="bi bi-chevron-left" />
+              </button>
+              <h6 className="mb-0 fw-bold" style={{ color: "#1e3a5f" }}>{current.title}</h6>
+              <div style={{ width: 24 }} />
+            </div>
+          )}
+
+          <div className={isMobile ? "p-3" : "p-4"}>
             {loading ? (
               <div className="text-center py-5" style={{ marginTop: "10%" }}>
                 <div className="spinner-border text-primary" role="status">
@@ -990,6 +1231,107 @@ export default function AdminPanel({ onLogout }) {
             )}
           </div>
         </div>
+
+        {/* Mobile Bottom Navigation Bar */}
+        {isMobile && (
+          <div 
+            className="d-flex justify-content-around align-items-center bg-white border-top position-fixed bottom-0 start-0 end-0"
+            style={{ height: 60, zIndex: 1000, boxShadow: "0 -2px 10px rgba(0,0,0,0.05)" }}
+          >
+            <button 
+              onClick={() => setActivePage("dashboard")} 
+              className="btn border-0 d-flex flex-column align-items-center justify-content-center p-0"
+              style={{ color: activePage === "dashboard" ? "#4f46e5" : "#64748b", flex: 1 }}
+            >
+              <i className={`bi ${activePage === "dashboard" ? "bi-grid-fill" : "bi-grid"}`} style={{ fontSize: 18 }} />
+              <span style={{ fontSize: 9, fontWeight: activePage === "dashboard" ? "600" : "500", marginTop: 2 }}>Dashboard</span>
+            </button>
+            <button 
+              onClick={() => setActivePage("pasien")} 
+              className="btn border-0 d-flex flex-column align-items-center justify-content-center p-0"
+              style={{ color: activePage === "pasien" ? "#4f46e5" : "#64748b", flex: 1 }}
+            >
+              <i className={`bi ${activePage === "pasien" ? "bi-people-fill" : "bi-people"}`} style={{ fontSize: 18 }} />
+              <span style={{ fontSize: 9, fontWeight: activePage === "pasien" ? "600" : "500", marginTop: 2 }}>Data Pasien</span>
+            </button>
+            <button 
+              onClick={() => setActivePage("tambah")} 
+              className="btn border-0 d-flex flex-column align-items-center justify-content-center p-0"
+              style={{ color: activePage === "tambah" ? "#4f46e5" : "#64748b", flex: 1 }}
+            >
+              <i className={`bi ${activePage === "tambah" ? "bi-person-plus-fill" : "bi-person-plus"}`} style={{ fontSize: 18 }} />
+              <span style={{ fontSize: 9, fontWeight: activePage === "tambah" ? "600" : "500", marginTop: 2 }}>Tambah</span>
+            </button>
+            <button 
+              onClick={() => setShowLogoutModal(true)} 
+              className="btn border-0 d-flex flex-column align-items-center justify-content-center p-0"
+              style={{ color: "#64748b", flex: 1 }}
+            >
+              <i className="bi bi-person-circle" style={{ fontSize: 18 }} />
+              <span style={{ fontSize: 9, fontWeight: "500", marginTop: 2 }}>{userName ? userName.slice(0, 10) : "Admin"}</span>
+            </button>
+          </div>
+        )}
+
+        {/* Premium Logout Confirmation Modal */}
+        {showLogoutModal && (
+          <>
+            <div 
+              className="modal-backdrop show" 
+              style={{ zIndex: 1040 }} 
+              onClick={() => setShowLogoutModal(false)}
+            />
+            <div 
+              className="modal show d-block" 
+              tabIndex="-1" 
+              style={{ zIndex: 1050, top: "25%" }}
+            >
+              <div className="modal-dialog modal-dialog-centered px-3" style={{ maxWidth: 340 }}>
+                <div className="modal-content border-0 shadow-lg rounded-4 p-3 bg-white">
+                  <div className="text-center p-3">
+                    <div 
+                      className="d-inline-flex justify-content-center align-items-center mb-3"
+                      style={{
+                        width: "55px",
+                        height: "55px",
+                        borderRadius: "50%",
+                        background: "#fee2e2",
+                        color: "#dc3545"
+                      }}
+                    >
+                      <i className="bi bi-box-arrow-right" style={{ fontSize: 24 }} />
+                    </div>
+                    <h5 className="fw-bold mb-2" style={{ color: "#1e293b" }}>Keluar dari Portal?</h5>
+                    <p className="text-muted px-2" style={{ fontSize: 12.5 }}>
+                      Apakah Anda yakin ingin keluar dari aplikasi Smart Triage? Sesi Anda akan berakhir.
+                    </p>
+                  </div>
+                  <div className="d-flex gap-2">
+                    <button 
+                      type="button" 
+                      className="btn btn-light rounded-pill flex-1 w-50" 
+                      onClick={() => setShowLogoutModal(false)}
+                      style={{ fontSize: 13, fontWeight: "600", padding: "10px 0" }}
+                    >
+                      Batal
+                    </button>
+                    <button 
+                      type="button" 
+                      className="btn btn-danger rounded-pill flex-1 w-50" 
+                      onClick={() => {
+                        setShowLogoutModal(false);
+                        onLogout();
+                      }}
+                      style={{ fontSize: 13, fontWeight: "600", padding: "10px 0" }}
+                    >
+                      Keluar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </>
   );

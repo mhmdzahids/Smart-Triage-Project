@@ -14,6 +14,16 @@ function calcBMI(weight, height) {
   return Math.round(bmiVal * 10) / 10;
 }
 
+function getInitials(name) {
+  if (!name) return "";
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+  return parts[0] ? parts[0][0].toUpperCase() : "";
+}
+
+
 function getBMICategory(bmi) {
   if (!bmi) return "";
   if (bmi < 18.5) return "Kurus / Underweight";
@@ -61,7 +71,7 @@ function downloadTriageCSV(patient) {
 }
 
 // ─── Sidebar Component (Nurse Teal Vibes) ────────────────────────────────────
-function SidebarNurse({ activePage, setActivePage }) {
+function SidebarNurse({ activePage, setActivePage, userName }) {
   const navItems = [
     { id: "dashboard", icon: "bi-activity", label: "Dashboard Nurse" },
     { id: "triage", icon: "bi-clipboard2-pulse-fill", label: "Triage & Fisik" },
@@ -158,7 +168,7 @@ function SidebarNurse({ activePage, setActivePage }) {
             <i className="bi bi-person-badge-fill" />
           </div>
           <div>
-            <div style={{ fontWeight: 600 }}>Ns. Sarah, S.Kep</div>
+            <div style={{ fontWeight: 600 }}>Halo! Ns. {userName || "User"}</div>
             <div style={{ opacity: 0.75 }}>Perawat Triase</div>
           </div>
         </div>
@@ -168,7 +178,7 @@ function SidebarNurse({ activePage, setActivePage }) {
 }
 
 // ─── Dashboard Subpage ───────────────────────────────────────────────────────
-function NurseDashboard({ patients, setActivePage, setSelectedId }) {
+function NurseDashboard({ patients, setActivePage, setSelectedId, isMobile, userName }) {
   const triagedCount = patients.filter(p => p.meowsScore !== undefined).length;
   const highRiskCount = patients.filter(p => p.triageRisk === "High").length;
   const medRiskCount = patients.filter(p => p.triageRisk === "Medium").length;
@@ -181,11 +191,200 @@ function NurseDashboard({ patients, setActivePage, setSelectedId }) {
     { label: "Resiko Rendah (MEOWS 0-4)", value: lowRiskCount, icon: "bi-check-circle-fill", color: "#198754", bg: "#f0fdf4" }
   ];
 
+  if (isMobile) {
+    return (
+      <div style={{ background: "#f8fafc", minHeight: "100vh", padding: "10px 5px" }}>
+        {/* Mobile Header */}
+        <div className="mb-4 px-1">
+          <h3 className="fw-bold mb-1" style={{ color: "#0f766e", fontSize: "24px" }}>Halo, Ns. {userName || "Perawat"}</h3>
+          <div className="text-muted d-flex align-items-center gap-1.5" style={{ fontSize: "13px", fontWeight: "500" }}>
+            <i className="bi bi-calendar3 text-secondary me-1" />
+            {new Date().toLocaleDateString("id-ID", {
+              weekday: "long",
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            })}
+          </div>
+        </div>
+
+        {/* 2x2 stats */}
+        <div className="row g-3 mb-4">
+          {stats.map((s) => (
+            <div key={s.label} className="col-6">
+              <div className="card border-0 shadow-sm rounded-4 p-3 h-100 bg-white" style={{ border: "1px solid #f1f5f9" }}>
+                <div className="d-flex align-items-center justify-content-start mb-3">
+                  <div style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 10,
+                    background: s.bg,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center"
+                  }}>
+                    <i className={`bi ${s.icon}`} style={{ fontSize: 16, color: s.color }} />
+                  </div>
+                </div>
+                <div>
+                  <div className="text-muted fw-semibold mb-1" style={{ fontSize: 11 }}>{s.label.split(" (")[0]}</div>
+                  <div className="fw-bold" style={{ fontSize: 24, color: "#1e293b", lineHeight: 1.1 }}>{s.value}</div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Recent Patients List */}
+        <div className="mb-4">
+          <div className="d-flex align-items-center justify-content-between mb-3 px-1">
+            <h5 className="fw-bold mb-0" style={{ color: "#1e293b", fontSize: "16px" }}>Triage Pasien Terbaru</h5>
+            <button
+              className="btn btn-link p-0 text-decoration-none fw-semibold"
+              style={{ color: "#0d9488", fontSize: "13px" }}
+              onClick={() => {
+                setSelectedId(null);
+                setActivePage("triage");
+              }}
+            >
+              Mulai Triase
+            </button>
+          </div>
+
+          {patients.length === 0 ? (
+            <div className="text-center py-4 bg-white rounded-4 shadow-sm text-muted" style={{ fontSize: 12 }}>
+              Belum ada pasien terdaftar
+            </div>
+          ) : (
+            patients.map((p) => {
+              // Risk level color mapping
+              let riskBadgeBg = "#f1f5f9";
+              let riskBadgeText = "#64748b";
+              let riskLabel = "Belum Ditriase";
+              if (p.triageRisk === "High") {
+                riskBadgeBg = "#fee2e2";
+                riskBadgeText = "#dc3545";
+                riskLabel = "Tinggi";
+              } else if (p.triageRisk === "Medium") {
+                riskBadgeBg = "#fef3c7";
+                riskBadgeText = "#d97706";
+                riskLabel = "Sedang";
+              } else if (p.triageRisk === "Low") {
+                riskBadgeBg = "#dcfce7";
+                riskBadgeText = "#15803d";
+                riskLabel = "Rendah";
+              }
+
+              return (
+                <div
+                  key={p.id}
+                  className="card border-0 shadow-sm rounded-4 mb-2 bg-white"
+                  style={{ padding: "12px 16px", border: "1px solid #f1f5f9", cursor: "pointer" }}
+                  onClick={() => {
+                    setSelectedId(p.id);
+                    setActivePage("triage");
+                  }}
+                >
+                  <div className="d-flex align-items-center justify-content-between">
+                    <div className="d-flex align-items-center gap-3">
+                      {/* Avatar with initials */}
+                      <div
+                        className="fw-bold d-flex align-items-center justify-content-center"
+                        style={{
+                          width: 42,
+                          height: 42,
+                          borderRadius: "50%",
+                          background: "#f0fdfa",
+                          color: "#0d9488",
+                          fontSize: 14
+                        }}
+                      >
+                        {getInitials(p.nama)}
+                      </div>
+                      
+                      {/* Patient info */}
+                      <div>
+                        <div className="fw-bold" style={{ color: "#1e293b", fontSize: 14 }}>{p.nama}</div>
+                        <div className="text-muted" style={{ fontSize: 11, marginTop: 2 }}>
+                          {p.umur} thn • {p.tinggiBadan || "-"} cm / {p.beratBadan || "-"} kg
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Risk Badge and chevron */}
+                    <div className="d-flex align-items-center gap-2">
+                      <span
+                        className="badge fw-semibold"
+                        style={{
+                          background: riskBadgeBg,
+                          color: riskBadgeText,
+                          fontSize: 10,
+                          padding: "4px 8px",
+                          borderRadius: 6
+                        }}
+                      >
+                        {riskLabel}
+                      </span>
+                      {p.meowsScore !== undefined && (
+                        <span 
+                          className="badge text-white" 
+                          style={{ 
+                            background: p.meowsScore >= 7 ? "#dc3545" : p.meowsScore >= 5 ? "#ffc107" : "#198754", 
+                            fontSize: 10,
+                            borderRadius: 4
+                          }}
+                        >
+                          M: {p.meowsScore}
+                        </span>
+                      )}
+                      <i className="bi bi-chevron-right text-muted" style={{ fontSize: 14 }} />
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Floating Action Button (FAB) */}
+        <button
+          onClick={() => {
+            setSelectedId(null);
+            setActivePage("triage");
+          }}
+          className="btn shadow-lg d-flex align-items-center justify-content-center"
+          style={{
+            position: "fixed",
+            bottom: "85px",
+            right: "20px",
+            width: "55px",
+            height: "55px",
+            borderRadius: "50%",
+            background: "#0d9488",
+            color: "#fff",
+            zIndex: 999,
+            border: "none"
+          }}
+        >
+          <i className="bi bi-plus-lg" style={{ fontSize: 24 }} />
+        </button>
+      </div>
+    );
+  }
+
+  // Original desktop layout (kept original)
+  const statsDesktop = [
+    { label: "Pasien Ditriase", value: triagedCount, icon: "bi-clipboard2-check", color: "#0d9488", bg: "#f0fdfa" },
+    { label: "Resiko Tinggi (MEOWS >= 7)", value: highRiskCount, icon: "bi-exclamation-octagon-fill", color: "#dc3545", bg: "#fdf2f2" },
+    { label: "Resiko Sedang (MEOWS 5-6)", value: medRiskCount, icon: "bi-exclamation-triangle-fill", color: "#ffc107", bg: "#fffbeb" },
+    { label: "Resiko Rendah (MEOWS 0-4)", value: lowRiskCount, icon: "bi-check-circle-fill", color: "#198754", bg: "#f0fdf4" }
+  ];
+
   return (
     <div>
       {/* Stats row */}
       <div className="row g-3 mb-4">
-        {stats.map((s) => (
+        {statsDesktop.map((s) => (
           <div key={s.label} className="col-6 col-xl-3">
             <div
               className="rounded-3 p-3 h-100 shadow-sm"
@@ -920,11 +1119,19 @@ function TriageWorkspace({ patients, setPatients, selectedId, setSelectedId }) {
   );
 }
 
-export default function NursePanel({ onLogout }) {
+export default function NursePanel({ onLogout, userName }) {
   const [activePage, setActivePage] = useState("dashboard");
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState(null);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   useEffect(() => {
     async function loadData() {
@@ -943,10 +1150,15 @@ export default function NursePanel({ onLogout }) {
     loadData();
   }, []);
 
+  function handleSelectFromDashboard(id) {
+    setSelectedId(id);
+    setActivePage("triage");
+  }
+
   const subpages = {
     dashboard: {
       title: "Dashboard Pemantauan & Triage Perawat",
-      component: <NurseDashboard patients={patients} setActivePage={setActivePage} setSelectedId={handleSelectFromDashboard} />
+      component: <NurseDashboard patients={patients} setActivePage={setActivePage} setSelectedId={handleSelectFromDashboard} isMobile={isMobile} userName={userName} />
     },
     triage: {
       title: "Workspace Triase & Pemeriksaan Fisik",
@@ -960,11 +1172,6 @@ export default function NursePanel({ onLogout }) {
       )
     }
   };
-
-  function handleSelectFromDashboard(id) {
-    setSelectedId(id);
-    setActivePage("triage");
-  }
 
   const current = subpages[activePage];
 
@@ -981,54 +1188,86 @@ export default function NursePanel({ onLogout }) {
       />
 
       <div style={{ background: "#f4f7f6", minHeight: "100vh" }}>
-        <SidebarNurse activePage={activePage} setActivePage={setActivePage} />
+        {!isMobile && (
+          <SidebarNurse activePage={activePage} setActivePage={setActivePage} userName={userName} />
+        )}
 
         {/* Main Content Area */}
-        <div style={{ marginLeft: 250 }}>
-          {/* Topbar */}
-          <div
-            className="d-flex align-items-center justify-content-between px-4"
-            style={{
-              height: 60,
-              background: "#fff",
-              borderBottom: "1px solid #e2e8f0",
-              position: "sticky",
-              top: 0,
-              zIndex: 50,
-              boxShadow: "0 1px 6px rgba(0,0,0,0.04)",
-            }}
-          >
-            <h5 className="mb-0 fw-semibold text-dark" style={{ color: "#0f766e" }}>
-              {current.title}
-            </h5>
-            <div className="d-flex align-items-center gap-3">
-              <span
-                className="badge"
-                style={{ background: "#e6f4ea", color: "#137333", fontSize: 12 }}
-              >
-                <i className="bi bi-calendar3 me-1" />
-                {new Date().toLocaleDateString("id-ID", {
-                  weekday: "long",
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })}
-              </span>
-              {onLogout && (
-                <button
-                  onClick={onLogout}
-                  className="btn btn-outline-danger btn-sm d-flex align-items-center gap-1 px-3 py-1.5"
-                  style={{ borderRadius: "20px", fontSize: "12px", fontWeight: "600" }}
+        <div style={{ 
+          marginLeft: isMobile ? 0 : 250,
+          paddingBottom: isMobile ? 80 : 0
+        }}>
+          {/* Desktop Topbar */}
+          {!isMobile && (
+            <div
+              className="d-flex align-items-center justify-content-between px-4"
+              style={{
+                height: 60,
+                background: "#fff",
+                borderBottom: "1px solid #e2e8f0",
+                position: "sticky",
+                top: 0,
+                zIndex: 50,
+                boxShadow: "0 1px 6px rgba(0,0,0,0.04)",
+              }}
+            >
+              <h5 className="mb-0 fw-semibold text-dark" style={{ color: "#0f766e" }}>
+                {current.title}
+              </h5>
+              <div className="d-flex align-items-center gap-3">
+                <span
+                  className="badge"
+                  style={{ background: "#e6f4ea", color: "#137333", fontSize: 12 }}
                 >
-                  <i className="bi bi-box-arrow-right" />
-                  Keluar
-                </button>
-              )}
+                  <i className="bi bi-calendar3 me-1" />
+                  {new Date().toLocaleDateString("id-ID", {
+                    weekday: "long",
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })}
+                </span>
+                {onLogout && (
+                  <button
+                    onClick={onLogout}
+                    className="btn btn-outline-danger btn-sm d-flex align-items-center gap-1 px-3 py-1.5"
+                    style={{ borderRadius: "20px", fontSize: "12px", fontWeight: "600" }}
+                  >
+                    <i className="bi bi-box-arrow-right" />
+                    Keluar
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* Mobile Topbar for other pages */}
+          {isMobile && activePage !== "dashboard" && (
+            <div 
+              className="d-flex align-items-center justify-content-between px-3"
+              style={{
+                height: 55,
+                background: "#fff",
+                borderBottom: "1px solid #e2e8f0",
+                position: "sticky",
+                top: 0,
+                zIndex: 100
+              }}
+            >
+              <button 
+                className="btn btn-link p-0 text-dark" 
+                onClick={() => setActivePage("dashboard")}
+                style={{ fontSize: 20 }}
+              >
+                <i className="bi bi-chevron-left" />
+              </button>
+              <h6 className="mb-0 fw-bold" style={{ color: "#0f766e" }}>{current.title}</h6>
+              <div style={{ width: 24 }} />
+            </div>
+          )}
 
           {/* Subpage component */}
-          <div className="p-4">
+          <div className={isMobile ? "p-3" : "p-4"}>
             {loading ? (
               <div className="text-center py-5" style={{ marginTop: "10%" }}>
                 <div className="spinner-border text-info" role="status" style={{ color: "#0f766e" }}>
@@ -1040,6 +1279,99 @@ export default function NursePanel({ onLogout }) {
             )}
           </div>
         </div>
+
+        {/* Mobile Bottom Navigation Bar */}
+        {isMobile && (
+          <div 
+            className="d-flex justify-content-around align-items-center bg-white border-top position-fixed bottom-0 start-0 end-0"
+            style={{ height: 60, zIndex: 1000, boxShadow: "0 -2px 10px rgba(0,0,0,0.05)" }}
+          >
+            <button 
+              onClick={() => setActivePage("dashboard")} 
+              className="btn border-0 d-flex flex-column align-items-center justify-content-center p-0"
+              style={{ color: activePage === "dashboard" ? "#0d9488" : "#64748b", flex: 1 }}
+            >
+              <i className={`bi ${activePage === "dashboard" ? "bi-grid-fill" : "bi-grid"}`} style={{ fontSize: 18 }} />
+              <span style={{ fontSize: 9, fontWeight: activePage === "dashboard" ? "600" : "500", marginTop: 2 }}>Dashboard</span>
+            </button>
+            <button 
+              onClick={() => setActivePage("triage")} 
+              className="btn border-0 d-flex flex-column align-items-center justify-content-center p-0"
+              style={{ color: activePage === "triage" ? "#0d9488" : "#64748b", flex: 1 }}
+            >
+              <i className={`bi ${activePage === "triage" ? "bi-clipboard2-pulse-fill" : "bi-clipboard2-pulse"}`} style={{ fontSize: 18 }} />
+              <span style={{ fontSize: 9, fontWeight: activePage === "triage" ? "600" : "500", marginTop: 2 }}>Triage & Fisik</span>
+            </button>
+            <button 
+              onClick={() => setShowLogoutModal(true)} 
+              className="btn border-0 d-flex flex-column align-items-center justify-content-center p-0"
+              style={{ color: "#64748b", flex: 1 }}
+            >
+              <i className="bi bi-person-circle" style={{ fontSize: 18 }} />
+              <span style={{ fontSize: 9, fontWeight: "500", marginTop: 2 }}>{userName ? userName.slice(0, 10) : "Perawat"}</span>
+            </button>
+          </div>
+        )}
+
+        {/* Premium Logout Confirmation Modal */}
+        {showLogoutModal && (
+          <>
+            <div 
+              className="modal-backdrop show" 
+              style={{ zIndex: 1040 }} 
+              onClick={() => setShowLogoutModal(false)}
+            />
+            <div 
+              className="modal show d-block" 
+              tabIndex="-1" 
+              style={{ zIndex: 1050, top: "25%" }}
+            >
+              <div className="modal-dialog modal-dialog-centered px-3" style={{ maxWidth: 340 }}>
+                <div className="modal-content border-0 shadow-lg rounded-4 p-3 bg-white">
+                  <div className="text-center p-3">
+                    <div 
+                      className="d-inline-flex justify-content-center align-items-center mb-3"
+                      style={{
+                        width: "55px",
+                        height: "55px",
+                        borderRadius: "50%",
+                        background: "#fee2e2",
+                        color: "#dc3545"
+                      }}
+                    >
+                      <i className="bi bi-box-arrow-right" style={{ fontSize: 24 }} />
+                    </div>
+                    <h5 className="fw-bold mb-2" style={{ color: "#1e293b" }}>Keluar dari Portal?</h5>
+                    <p className="text-muted px-2" style={{ fontSize: 12.5 }}>
+                      Apakah Anda yakin ingin keluar dari aplikasi Smart Triage? Sesi Anda akan berakhir.
+                    </p>
+                  </div>
+                  <div className="d-flex gap-2">
+                    <button 
+                      type="button" 
+                      className="btn btn-light rounded-pill flex-1 w-50" 
+                      onClick={() => setShowLogoutModal(false)}
+                      style={{ fontSize: 13, fontWeight: "600", padding: "10px 0" }}
+                    >
+                      Batal
+                    </button>
+                    <button 
+                      type="button" 
+                      className="btn btn-danger rounded-pill flex-1 w-50" 
+                      onClick={() => {
+                        setShowLogoutModal(false);
+                        onLogout();
+                      }}
+                      style={{ fontSize: 13, fontWeight: "600", padding: "10px 0" }}
+                    >
+                      Keluar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </>
   );

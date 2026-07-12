@@ -178,6 +178,7 @@ function App() {
   };
 
   const activeRole = getActiveRole();
+  const activeName = userProfile?.name || session?.user?.user_metadata?.name || "User";
 
   if (loading) {
     return (
@@ -263,9 +264,9 @@ function App() {
       {/* Main Routing UI */}
       {session ? (
         <>
-          {activeRole === 'ADMIN' && <AdminPanel onLogout={handleLogout} />}
-          {activeRole === 'NURSE' && <NursePanel onLogout={handleLogout} />}
-          {activeRole === 'DOCTOR' && <DoctorPanel onLogout={handleLogout} />}
+          {activeRole === 'ADMIN' && <AdminPanel onLogout={handleLogout} userName={activeName} />}
+          {activeRole === 'NURSE' && <NursePanel onLogout={handleLogout} userName={activeName} />}
+          {activeRole === 'DOCTOR' && <DoctorPanel onLogout={handleLogout} userName={activeName} />}
           {!activeRole && (
             <div 
               className="d-flex justify-content-center align-items-center text-center p-5 bg-light"

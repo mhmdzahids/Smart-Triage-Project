@@ -10,6 +10,15 @@ function calcBMI(weight, height) {
   return Math.round(bmiVal * 10) / 10;
 }
 
+function getInitials(name) {
+  if (!name) return "";
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+  return parts[0] ? parts[0][0].toUpperCase() : "";
+}
+
 function getBMICategory(bmi) {
   if (!bmi) return "";
   if (bmi < 18.5) return "Kurus / Underweight";
@@ -97,7 +106,7 @@ function downloadMedicalRecordCSV(p) {
 }
 
 // ─── Sidebar Component (Doctor Indigo Vibes) ─────────────────────────────────
-function SidebarDoctor({ activePage, setActivePage }) {
+function SidebarDoctor({ activePage, setActivePage, userName }) {
   const navItems = [
     { id: "dashboard", icon: "bi-shield-shaded", label: "Dashboard Dokter" },
     { id: "diagnose", icon: "bi-heart-pulse-fill", label: "Pasien & Diagnosis" },
@@ -194,7 +203,7 @@ function SidebarDoctor({ activePage, setActivePage }) {
             <i className="bi bi-person-fill" />
           </div>
           <div>
-            <div style={{ fontWeight: 600 }}>dr. Adrian, Sp.PD</div>
+            <div style={{ fontWeight: 600 }}>Halo! Dr. {userName || "User"}</div>
             <div style={{ opacity: 0.7 }}>Dokter Jaga IGD</div>
           </div>
         </div>
@@ -204,7 +213,7 @@ function SidebarDoctor({ activePage, setActivePage }) {
 }
 
 // ─── Doctor Dashboard Subpage ────────────────────────────────────────────────
-function DoctorDashboard({ patients, setActivePage, setSelectedId }) {
+function DoctorDashboard({ patients, setActivePage, setSelectedId, isMobile, userName }) {
   // Stats
   const totalCount = patients.length;
   const waitingDiagnose = patients.filter(p => p.statusDiagnosis === "Belum Diperiksa").length;
@@ -228,6 +237,163 @@ function DoctorDashboard({ patients, setActivePage, setSelectedId }) {
     // 2. Sort by MEOWS score (highest first)
     return b.meowsScore - a.meowsScore;
   });
+
+  if (isMobile) {
+    return (
+      <div style={{ background: "#f8fafc", minHeight: "100vh", padding: "10px 5px" }}>
+        {/* Mobile Header */}
+        <div className="mb-4 px-1">
+          <h3 className="fw-bold mb-1" style={{ color: "#312e81", fontSize: "24px" }}>Halo, Dr. {userName || "Dokter"}</h3>
+          <div className="text-muted d-flex align-items-center gap-1.5" style={{ fontSize: "13px", fontWeight: "500" }}>
+            <i className="bi bi-calendar3 text-secondary me-1" />
+            {new Date().toLocaleDateString("id-ID", {
+              weekday: "long",
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            })}
+          </div>
+        </div>
+
+        {/* 2x2 stats */}
+        <div className="row g-3 mb-4">
+          {stats.map((s) => (
+            <div key={s.label} className="col-6">
+              <div className="card border-0 shadow-sm rounded-4 p-3 h-100 bg-white" style={{ border: "1px solid #f1f5f9" }}>
+                <div className="d-flex align-items-center justify-content-start mb-3">
+                  <div style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 10,
+                    background: s.bg,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center"
+                  }}>
+                    <i className={`bi ${s.icon}`} style={{ fontSize: 16, color: s.color }} />
+                  </div>
+                </div>
+                <div>
+                  <div className="text-muted fw-semibold mb-1" style={{ fontSize: 11 }}>{s.label.split(" (")[0]}</div>
+                  <div className="fw-bold" style={{ fontSize: 24, color: "#1e293b", lineHeight: 1.1 }}>{s.value}</div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Recent Patients List */}
+        <div className="mb-4">
+          <div className="d-flex align-items-center justify-content-between mb-3 px-1">
+            <h5 className="fw-bold mb-0" style={{ color: "#1e293b", fontSize: "16px" }}>Antrean Pemeriksaan IGD</h5>
+            <span className="badge bg-light text-muted border py-1.5 px-2" style={{ fontSize: 10 }}>Prioritas MEOWS</span>
+          </div>
+
+          {sortedPatients.length === 0 ? (
+            <div className="text-center py-4 bg-white rounded-4 shadow-sm text-muted" style={{ fontSize: 12 }}>
+              Belum ada pasien antrean
+            </div>
+          ) : (
+            sortedPatients.map((p) => {
+              let riskBadgeText = "#64748b";
+              let riskLabel = "Belum Ditriase";
+              if (p.triageRisk === "High") {
+                riskBadgeText = "#dc3545";
+                riskLabel = "Tinggi";
+              } else if (p.triageRisk === "Medium") {
+                riskBadgeText = "#d97706";
+                riskLabel = "Sedang";
+              } else if (p.triageRisk === "Low") {
+                riskBadgeText = "#15803d";
+                riskLabel = "Rendah";
+              }
+
+              const isChecked = p.statusDiagnosis === "Sudah Diperiksa";
+
+              return (
+                <div
+                  key={p.id}
+                  className="card border-0 shadow-sm rounded-4 mb-2 bg-white"
+                  style={{ padding: "12px 16px", border: "1px solid #f1f5f9", cursor: "pointer" }}
+                  onClick={() => {
+                    setSelectedId(p.id);
+                    setActivePage("diagnose");
+                  }}
+                >
+                  <div className="d-flex align-items-center justify-content-between">
+                    <div className="d-flex align-items-center gap-3">
+                      <div
+                        className="fw-bold d-flex align-items-center justify-content-center"
+                        style={{
+                          width: 42,
+                          height: 42,
+                          borderRadius: "50%",
+                          background: isChecked ? "#ecfdf5" : "#eef2ff",
+                          color: isChecked ? "#10b981" : "#4f46e5",
+                          fontSize: 14
+                        }}
+                      >
+                        {getInitials(p.nama)}
+                      </div>
+                      
+                      <div>
+                        <div className="fw-bold" style={{ color: "#1e293b", fontSize: 14 }}>{p.nama}</div>
+                        <div className="text-muted" style={{ fontSize: 11, marginTop: 2 }}>
+                          Score: {p.meowsScore !== undefined ? p.meowsScore : "-"} • Risk: <span style={{ color: riskBadgeText, fontWeight: "600" }}>{riskLabel}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="d-flex align-items-center gap-2">
+                      <span
+                        className="badge fw-semibold"
+                        style={{
+                          background: isChecked ? "#ecfdf5" : "#fffbeb",
+                          color: isChecked ? "#10b981" : "#d97706",
+                          fontSize: 9,
+                          padding: "4px 8px",
+                          borderRadius: 6,
+                          border: isChecked ? "1px solid #a7f3d0" : "1px solid #fde68a"
+                        }}
+                      >
+                        {isChecked ? "Selesai" : "Menunggu"}
+                      </span>
+                      <i className="bi bi-chevron-right text-muted" style={{ fontSize: 14 }} />
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Floating Action Button (FAB) */}
+        <button
+          onClick={() => {
+            if (sortedPatients.length > 0) {
+              setSelectedId(sortedPatients[0].id);
+            }
+            setActivePage("diagnose");
+          }}
+          className="btn shadow-lg d-flex align-items-center justify-content-center"
+          style={{
+            position: "fixed",
+            bottom: "85px",
+            right: "20px",
+            width: "55px",
+            height: "55px",
+            borderRadius: "50%",
+            background: "#4f46e5",
+            color: "#fff",
+            zIndex: 999,
+            border: "none"
+          }}
+        >
+          <i className="bi bi-clipboard2-pulse-fill" style={{ fontSize: 22 }} />
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -1188,11 +1354,19 @@ function DiagnoseWorkspace({ patients, setPatients, selectedId, setSelectedId })
   );
 }
 
-export default function DoctorPanel({ onLogout }) {
+export default function DoctorPanel({ onLogout, userName }) {
   const [activePage, setActivePage] = useState("dashboard");
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState(null);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   useEffect(() => {
     async function loadData() {
@@ -1212,10 +1386,15 @@ export default function DoctorPanel({ onLogout }) {
     loadData();
   }, []);
 
+  function handleSelectFromDashboard(id) {
+    setSelectedId(id);
+    setActivePage("diagnose");
+  }
+
   const subpages = {
     dashboard: {
       title: "Papan Pemantauan Pasien IGD Dokter",
-      component: <DoctorDashboard patients={patients} setActivePage={setActivePage} setSelectedId={handleSelectFromDashboard} />
+      component: <DoctorDashboard patients={patients} setActivePage={setActivePage} setSelectedId={handleSelectFromDashboard} isMobile={isMobile} userName={userName} />
     },
     diagnose: {
       title: "Lembar Catatan Medis & Diagnosis Pasien",
@@ -1230,16 +1409,10 @@ export default function DoctorPanel({ onLogout }) {
     }
   };
 
-  function handleSelectFromDashboard(id) {
-    setSelectedId(id);
-    setActivePage("diagnose");
-  }
-
   const current = subpages[activePage];
 
   return (
     <>
-      {/* Bootstrap CSS (if not already globally loaded) */}
       <link
         rel="stylesheet"
         href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css"
@@ -1250,54 +1423,82 @@ export default function DoctorPanel({ onLogout }) {
       />
 
       <div style={{ background: "#f5f6fa", minHeight: "100vh" }}>
-        <SidebarDoctor activePage={activePage} setActivePage={setActivePage} />
+        {!isMobile && (
+          <SidebarDoctor activePage={activePage} setActivePage={setActivePage} userName={userName} />
+        )}
 
-        {/* Main Content Area */}
-        <div style={{ marginLeft: 250 }}>
-          {/* Topbar */}
-          <div
-            className="d-flex align-items-center justify-content-between px-4"
-            style={{
-              height: 60,
-              background: "#fff",
-              borderBottom: "1px solid #e2e8f0",
-              position: "sticky",
-              top: 0,
-              zIndex: 50,
-              boxShadow: "0 1px 6px rgba(0,0,0,0.04)",
-            }}
-          >
-            <h5 className="mb-0 fw-semibold text-indigo" style={{ color: "#312e81" }}>
-              {current.title}
-            </h5>
-            <div className="d-flex align-items-center gap-3">
-              <span
-                className="badge"
-                style={{ background: "#eef2ff", color: "#4f46e5", fontSize: 12 }}
-              >
-                <i className="bi bi-calendar3 me-1" />
-                {new Date().toLocaleDateString("id-ID", {
-                  weekday: "long",
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })}
-              </span>
-              {onLogout && (
-                <button
-                  onClick={onLogout}
-                  className="btn btn-outline-danger btn-sm d-flex align-items-center gap-1 px-3 py-1.5"
-                  style={{ borderRadius: "20px", fontSize: "12px", fontWeight: "600" }}
+        <div style={{ 
+          marginLeft: isMobile ? 0 : 250,
+          paddingBottom: isMobile ? 80 : 0
+        }}>
+          {!isMobile && (
+            <div
+              className="d-flex align-items-center justify-content-between px-4"
+              style={{
+                height: 60,
+                background: "#fff",
+                borderBottom: "1px solid #e2e8f0",
+                position: "sticky",
+                top: 0,
+                zIndex: 50,
+                boxShadow: "0 1px 6px rgba(0,0,0,0.04)",
+              }}
+            >
+              <h5 className="mb-0 fw-semibold text-indigo" style={{ color: "#312e81" }}>
+                {current.title}
+              </h5>
+              <div className="d-flex align-items-center gap-3">
+                <span
+                  className="badge"
+                  style={{ background: "#eef2ff", color: "#4f46e5", fontSize: 12 }}
                 >
-                  <i className="bi bi-box-arrow-right" />
-                  Keluar
-                </button>
-              )}
+                  <i className="bi bi-calendar3 me-1" />
+                  {new Date().toLocaleDateString("id-ID", {
+                    weekday: "long",
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })}
+                </span>
+                {onLogout && (
+                  <button
+                    onClick={onLogout}
+                    className="btn btn-outline-danger btn-sm d-flex align-items-center gap-1 px-3 py-1.5"
+                    style={{ borderRadius: "20px", fontSize: "12px", fontWeight: "600" }}
+                  >
+                    <i className="bi bi-box-arrow-right" />
+                    Keluar
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Subpage component */}
-          <div className="p-4">
+          {isMobile && activePage !== "dashboard" && (
+            <div 
+              className="d-flex align-items-center justify-content-between px-3"
+              style={{
+                height: 55,
+                background: "#fff",
+                borderBottom: "1px solid #e2e8f0",
+                position: "sticky",
+                top: 0,
+                zIndex: 100
+              }}
+            >
+              <button 
+                className="btn btn-link p-0 text-dark" 
+                onClick={() => setActivePage("dashboard")}
+                style={{ fontSize: 20 }}
+              >
+                <i className="bi bi-chevron-left" />
+              </button>
+              <h6 className="mb-0 fw-bold" style={{ color: "#312e81" }}>{current.title}</h6>
+              <div style={{ width: 24 }} />
+            </div>
+          )}
+
+          <div className={isMobile ? "p-3" : "p-4"}>
             {loading ? (
               <div className="text-center py-5" style={{ marginTop: "10%" }}>
                 <div className="spinner-border text-primary" role="status" style={{ color: "#4f46e5" }}>
@@ -1309,6 +1510,97 @@ export default function DoctorPanel({ onLogout }) {
             )}
           </div>
         </div>
+
+        {isMobile && (
+          <div 
+            className="d-flex justify-content-around align-items-center bg-white border-top position-fixed bottom-0 start-0 end-0"
+            style={{ height: 60, zIndex: 1000, boxShadow: "0 -2px 10px rgba(0,0,0,0.05)" }}
+          >
+            <button 
+              onClick={() => setActivePage("dashboard")} 
+              className="btn border-0 d-flex flex-column align-items-center justify-content-center p-0"
+              style={{ color: activePage === "dashboard" ? "#4f46e5" : "#64748b", flex: 1 }}
+            >
+              <i className={`bi ${activePage === "dashboard" ? "bi-grid-fill" : "bi-grid"}`} style={{ fontSize: 18 }} />
+              <span style={{ fontSize: 9, fontWeight: activePage === "dashboard" ? "600" : "500", marginTop: 2 }}>Dashboard</span>
+            </button>
+            <button 
+              onClick={() => setActivePage("diagnose")} 
+              className="btn border-0 d-flex flex-column align-items-center justify-content-center p-0"
+              style={{ color: activePage === "diagnose" ? "#4f46e5" : "#64748b", flex: 1 }}
+            >
+              <i className={`bi ${activePage === "diagnose" ? "bi-heart-pulse-fill" : "bi-heart-pulse"}`} style={{ fontSize: 18 }} />
+              <span style={{ fontSize: 9, fontWeight: activePage === "diagnose" ? "600" : "500", marginTop: 2 }}>Diagnosis</span>
+            </button>
+            <button 
+              onClick={() => setShowLogoutModal(true)} 
+              className="btn border-0 d-flex flex-column align-items-center justify-content-center p-0"
+              style={{ color: "#64748b", flex: 1 }}
+            >
+              <i className="bi bi-person-circle" style={{ fontSize: 18 }} />
+              <span style={{ fontSize: 9, fontWeight: "500", marginTop: 2 }}>{userName ? userName.slice(0, 10) : "Dokter"}</span>
+            </button>
+          </div>
+        )}
+
+        {showLogoutModal && (
+          <>
+            <div 
+              className="modal-backdrop show" 
+              style={{ zIndex: 1040 }} 
+              onClick={() => setShowLogoutModal(false)}
+            />
+            <div 
+              className="modal show d-block" 
+              tabIndex="-1" 
+              style={{ zIndex: 1050, top: "25%" }}
+            >
+              <div className="modal-dialog modal-dialog-centered px-3" style={{ maxWidth: 340 }}>
+                <div className="modal-content border-0 shadow-lg rounded-4 p-3 bg-white">
+                  <div className="text-center p-3">
+                    <div 
+                      className="d-inline-flex justify-content-center align-items-center mb-3"
+                      style={{
+                        width: "55px",
+                        height: "55px",
+                        borderRadius: "50%",
+                        background: "#fee2e2",
+                        color: "#dc3545"
+                      }}
+                    >
+                      <i className="bi bi-box-arrow-right" style={{ fontSize: 24 }} />
+                    </div>
+                    <h5 className="fw-bold mb-2" style={{ color: "#1e293b" }}>Keluar dari Portal?</h5>
+                    <p className="text-muted px-2" style={{ fontSize: 12.5 }}>
+                      Apakah Anda yakin ingin keluar dari aplikasi Smart Triage? Sesi Anda akan berakhir.
+                    </p>
+                  </div>
+                  <div className="d-flex gap-2">
+                    <button 
+                      type="button" 
+                      className="btn btn-light rounded-pill flex-1 w-50" 
+                      onClick={() => setShowLogoutModal(false)}
+                      style={{ fontSize: 13, fontWeight: "600", padding: "10px 0" }}
+                    >
+                      Batal
+                    </button>
+                    <button 
+                      type="button" 
+                      className="btn btn-danger rounded-pill flex-1 w-50" 
+                      onClick={() => {
+                        setShowLogoutModal(false);
+                        onLogout();
+                      }}
+                      style={{ fontSize: 13, fontWeight: "600", padding: "10px 0" }}
+                    >
+                      Keluar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </>
   );
