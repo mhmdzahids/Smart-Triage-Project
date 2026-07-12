@@ -1,136 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { fetchActiveVisits, saveDoctorDiagnosis, updateTriageDetails } from "./supabaseHelpers";
 
-// ─── Mock Data for Doctor ─────────────────────────────────────────────────────
-const MOCK_PATIENTS_DOCTOR = [
-  {
-    id: 1,
-    nama: "Siti Rahayu",
-    nik: "3201234567890001",
-    noBpjs: "0001234567890",
-    tglLahir: "1985-03-12",
-    umur: 39,
-    jenisKelamin: "Perempuan",
-    alamat: "Jl. Merdeka No. 10, Bekasi",
-    noHp: "08123456789",
-    namaKontak: "Budi Rahayu",
-    hubKontak: "Suami",
-    statusPasien: "BPJS",
-    tglDaftar: "2025-06-20",
-    
-    // Anthropometric Data
-    beratBadan: 58,
-    tinggiBadan: 155,
-    imt: 24.1,
-    lingkarKepala: "",
-    lingkarLengan: 26,
-    golDarah: "O",
-    
-    // Vital/Triage Parameters & Keluhan
-    keluhan: "Nyeri dada sebelah kiri menjalar ke lengan kiri sejak 2 jam lalu",
-    rr: 16,
-    spo2: 98,
-    suplemenO2: "Tidak",
-    suhu: 36.6,
-    sistolik: 120,
-    diastolik: 80,
-    nadi: 78,
-    avpu: "Alert",
-    meowsScore: 0,
-    triageRisk: "Low",
-    tglTriage: "2025-06-20 22:45",
-
-    // Doctor Diagnosis & Treatment Plan (Initial Empty or Mock)
-    diagnosa: "",
-    rencanaTerapi: "",
-    disposisi: "",
-    statusDiagnosis: "Belum Diperiksa"
-  },
-  {
-    id: 2,
-    nama: "Ahmad Fauzi",
-    nik: "3201234567890002",
-    noBpjs: "",
-    tglLahir: "1992-07-25",
-    umur: 32,
-    jenisKelamin: "Laki-laki",
-    alamat: "Jl. Sudirman No. 5, Jakarta",
-    noHp: "08234567890",
-    namaKontak: "Dewi Fauzi",
-    hubKontak: "Istri",
-    statusPasien: "Umum",
-    tglDaftar: "2025-06-21",
-
-    // Anthropometric Data
-    beratBadan: 75,
-    tinggiBadan: 172,
-    imt: 25.4,
-    lingkarKepala: "",
-    lingkarLengan: 29,
-    golDarah: "A+",
-    
-    // Vital/Triage Parameters & Keluhan
-    keluhan: "Sesak napas disertai demam tinggi sejak kemarin sore",
-    rr: 24,
-    spo2: 93,
-    suplemenO2: "Ya",
-    suhu: 38.5,
-    sistolik: 98,
-    diastolik: 65,
-    nadi: 112,
-    avpu: "Alert",
-    meowsScore: 8,
-    triageRisk: "High",
-    tglTriage: "2025-06-21 14:12",
-
-    // Doctor Diagnosis & Treatment Plan
-    diagnosa: "Pneumonia Lobaris Dextra",
-    rencanaTerapi: "Oksigenasi kanula nasal 3 lpm, Infus NaCl 0.9% 20 tpm, IV Ceftriaxone 2x1g, Nebulizer Ventolin per 8 jam.",
-    disposisi: "Rawat Inap",
-    statusDiagnosis: "Sudah Diperiksa"
-  },
-  {
-    id: 3,
-    nama: "Rizky Aditya (Bayi)",
-    nik: "3201234567890004",
-    noBpjs: "0001234567895",
-    tglLahir: "2024-11-10",
-    umur: 0,
-    jenisKelamin: "Laki-laki",
-    alamat: "Jl. Anggrek No. 12, Bekasi",
-    noHp: "08456789012",
-    namaKontak: "Siska Aditya",
-    hubKontak: "Ibu",
-    statusPasien: "BPJS",
-    tglDaftar: "2025-06-22",
-
-    // Anthropometric Data
-    beratBadan: 8.5,
-    tinggiBadan: 72,
-    imt: 16.4,
-    lingkarKepala: 44,
-    lingkarLengan: 13.5,
-    golDarah: "B",
-    
-    // Vital/Triage Parameters & Keluhan
-    keluhan: "Demam naik turun dan rewel sejak 1 hari yang lalu",
-    rr: 28,
-    spo2: 97,
-    suplemenO2: "Tidak",
-    suhu: 37.1,
-    sistolik: 85,
-    diastolik: 55,
-    nadi: 125,
-    avpu: "Alert",
-    meowsScore: 1,
-    triageRisk: "Low",
-    tglTriage: "2025-06-22 09:30",
-
-    diagnosa: "",
-    rencanaTerapi: "",
-    disposisi: "",
-    statusDiagnosis: "Belum Diperiksa"
-  }
-];
 
 // Helper: Calculate BMI
 function calcBMI(weight, height) {
@@ -716,38 +586,52 @@ function DiagnoseWorkspace({ patients, setPatients, selectedId, setSelectedId })
     setIsEditingVitals(false);
   };
 
-  const handleSave = () => {
-    setPatients((prev) => 
-      prev.map((p) => {
-        if (p.id === activePatient.id) {
-          return {
-            ...p,
-            diagnosa: diagnosa,
-            beratBadan: beratBadan !== "" ? parseFloat(beratBadan) : "",
-            tinggiBadan: tinggiBadan !== "" ? parseFloat(tinggiBadan) : "",
-            lingkarKepala: lingkarKepala !== "" ? parseFloat(lingkarKepala) : "",
-            lingkarLengan: lingkarLengan !== "" ? parseFloat(lingkarLengan) : "",
-            golDarah: golDarah,
-            rr: rr !== "" ? parseInt(rr) : "",
-            spo2: spo2 !== "" ? parseInt(spo2) : "",
-            suplemenO2: suplemenO2,
-            suhu: suhu !== "" ? parseFloat(suhu) : "",
-            sistolik: sistolik !== "" ? parseInt(sistolik) : "",
-            diastolik: diastolik !== "" ? parseInt(diastolik) : "",
-            nadi: nadi !== "" ? parseInt(nadi) : "",
-            avpu: avpu,
-            meowsScore: currentMeows.score,
-            triageRisk: currentMeows.risk,
-            statusDiagnosis: "Sudah Diperiksa"
-          };
-        }
-        return p;
-      })
-    );
-    setIsEditingAnthro(false);
-    setIsEditingVitals(false);
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 3000);
+  const handleSave = async () => {
+    const triageData = {
+      beratBadan: beratBadan !== "" ? parseFloat(beratBadan) : "",
+      tinggiBadan: tinggiBadan !== "" ? parseFloat(tinggiBadan) : "",
+      imt: currentBmi !== "" ? parseFloat(currentBmi) : "",
+      lingkarKepala: lingkarKepala !== "" ? parseFloat(lingkarKepala) : "",
+      lingkarLengan: lingkarLengan !== "" ? parseFloat(lingkarLengan) : "",
+      golDarah: golDarah,
+      keluhan: activePatient.keluhan,
+      
+      rr: rr !== "" ? parseInt(rr) : "",
+      spo2: spo2 !== "" ? parseInt(spo2) : "",
+      suplemenO2: suplemenO2,
+      suhu: suhu !== "" ? parseFloat(suhu) : "",
+      sistolik: sistolik !== "" ? parseInt(sistolik) : "",
+      diastolik: diastolik !== "" ? parseInt(diastolik) : "",
+      nadi: nadi !== "" ? parseInt(nadi) : "",
+      avpu: avpu,
+      meowsScore: currentMeows.score,
+      triageRisk: currentMeows.risk
+    };
+
+    try {
+      await updateTriageDetails(activePatient.id, triageData);
+      await saveDoctorDiagnosis(activePatient.id, diagnosa);
+      
+      setPatients((prev) => 
+        prev.map((p) => {
+          if (p.id === activePatient.id) {
+            return {
+              ...p,
+              ...triageData,
+              diagnosa: diagnosa,
+              statusDiagnosis: "Sudah Diperiksa"
+            };
+          }
+          return p;
+        })
+      );
+      setIsEditingAnthro(false);
+      setIsEditingVitals(false);
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (err) {
+      console.error("Error saving doctor diagnosis:", err.message);
+    }
   };
 
   const guidance = getMEOWSGuidance(currentMeows.risk);
@@ -1359,11 +1243,29 @@ function DiagnoseWorkspace({ patients, setPatients, selectedId, setSelectedId })
   );
 }
 
-// ─── Main Doctor Panel ───────────────────────────────────────────────────────
 export default function DoctorPanel() {
   const [activePage, setActivePage] = useState("dashboard");
-  const [patients, setPatients] = useState(MOCK_PATIENTS_DOCTOR);
-  const [selectedId, setSelectedId] = useState(2); // Start with Ahmad Fauzi as he is High Risk
+  const [patients, setPatients] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedId, setSelectedId] = useState(null);
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const data = await fetchActiveVisits();
+        setPatients(data);
+        if (data.length > 0) {
+          const sorted = [...data].sort((a, b) => b.meowsScore - a.meowsScore);
+          setSelectedId(sorted[0].id);
+        }
+      } catch (err) {
+        console.error("Error loading active visits:", err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, []);
 
   const subpages = {
     dashboard: {
@@ -1440,7 +1342,17 @@ export default function DoctorPanel() {
           </div>
 
           {/* Subpage component */}
-          <div className="p-4">{current.component}</div>
+          <div className="p-4">
+            {loading ? (
+              <div className="text-center py-5" style={{ marginTop: "10%" }}>
+                <div className="spinner-border text-primary" role="status" style={{ color: "#4f46e5" }}>
+                  <span className="visually-hidden">Loading...</span>
+                </div>
+              </div>
+            ) : (
+              current.component
+            )}
+          </div>
         </div>
       </div>
     </>

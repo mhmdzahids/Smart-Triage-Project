@@ -1,119 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { fetchActiveVisits, updateTriageDetails } from "./supabaseHelpers";
 
-// ─── Mock Data for Nurse ──────────────────────────────────────────────────────
-const MOCK_PATIENTS_NURSE = [
-  {
-    id: 1,
-    nama: "Siti Rahayu",
-    nik: "3201234567890001",
-    noBpjs: "0001234567890",
-    tglLahir: "1985-03-12",
-    umur: 39,
-    jenisKelamin: "Perempuan",
-    alamat: "Jl. Merdeka No. 10, Bekasi",
-    noHp: "08123456789",
-    namaKontak: "Budi Rahayu",
-    hubKontak: "Suami",
-    statusPasien: "BPJS",
-    tglDaftar: "2025-06-20",
-    keluhan: "Nyeri dada sebelah kiri menjalar ke lengan kiri sejak 2 jam lalu",
-    
-    // Anthropometric Data
-    beratBadan: 58,
-    tinggiBadan: 155,
-    imt: 24.1,
-    lingkarKepala: "",
-    lingkarLengan: 26,
-    golDarah: "O",
-    
-    // Vital/Triage Parameters
-    rr: 16,
-    spo2: 98,
-    suplemenO2: "Tidak",
-    suhu: 36.6,
-    sistolik: 120,
-    diastolik: 80,
-    nadi: 78,
-    avpu: "Alert",
-    meowsScore: 0,
-    triageRisk: "Low",
-    tglTriage: "2025-06-20"
-  },
-  {
-    id: 2,
-    nama: "Ahmad Fauzi",
-    nik: "3201234567890002",
-    noBpjs: "",
-    tglLahir: "1992-07-25",
-    umur: 32,
-    jenisKelamin: "Laki-laki",
-    alamat: "Jl. Sudirman No. 5, Jakarta",
-    noHp: "08234567890",
-    namaKontak: "Dewi Fauzi",
-    hubKontak: "Istri",
-    statusPasien: "Umum",
-    tglDaftar: "2025-06-21",
-    keluhan: "Sesak napas disertai demam tinggi sejak kemarin sore",
-
-    // Anthropometric Data
-    beratBadan: 75,
-    tinggiBadan: 172,
-    imt: 25.4,
-    lingkarKepala: "",
-    lingkarLengan: 29,
-    golDarah: "A+",
-    
-    // Vital/Triage Parameters
-    rr: 24,
-    spo2: 93,
-    suplemenO2: "Ya",
-    suhu: 38.5,
-    sistolik: 98,
-    diastolik: 65,
-    nadi: 112,
-    avpu: "Alert",
-    meowsScore: 8, // MEOWS Calculation: RR(2) + SpO2(2) + O2(2) + Temp(1) + SBP(1) + HR(2) = 10 (High Risk)
-    triageRisk: "High",
-    tglTriage: "2025-06-21"
-  },
-  {
-    id: 3,
-    nama: "Rizky Aditya (Bayi)",
-    nik: "3201234567890004",
-    noBpjs: "0001234567895",
-    tglLahir: "2024-11-10",
-    umur: 0,
-    jenisKelamin: "Laki-laki",
-    alamat: "Jl. Anggrek No. 12, Bekasi",
-    noHp: "08456789012",
-    namaKontak: "Siska Aditya",
-    hubKontak: "Ibu",
-    statusPasien: "BPJS",
-    tglDaftar: "2025-06-22",
-    keluhan: "Demam naik turun dan rewel sejak 1 hari yang lalu",
-
-    // Anthropometric Data
-    beratBadan: 8.5,
-    tinggiBadan: 72,
-    imt: 16.4,
-    lingkarKepala: 44,
-    lingkarLengan: 13.5,
-    golDarah: "B",
-    
-    // Vital/Triage Parameters
-    rr: 28,
-    spo2: 97,
-    suplemenO2: "Tidak",
-    suhu: 37.1,
-    sistolik: 85,
-    diastolik: 55,
-    nadi: 125,
-    avpu: "Alert",
-    meowsScore: 1,
-    triageRisk: "Low",
-    tglTriage: "2025-06-22"
-  }
-];
 
 const GOL_DARAH_OPTIONS = ["-", "A", "B", "AB", "O", "A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
 
@@ -616,44 +503,53 @@ function TriageWorkspace({ patients, setPatients, selectedId, setSelectedId }) {
     avpu
   });
 
-  const handleSave = () => {
-    setPatients((prev) => 
-      prev.map((p) => {
-        if (p.id === activePatient.id) {
-          return {
-            ...p,
-            beratBadan: parseFloat(beratBadan) || "",
-            tinggiBadan: parseFloat(tinggiBadan) || "",
-            imt: parseFloat(currentBmi) || "",
-            lingkarKepala: parseFloat(lingkarKepala) || "",
-            lingkarLengan: parseFloat(lingkarLengan) || "",
-            golDarah: golDarah,
-            keluhan: keluhan,
-            
-            rr: parseInt(rr) || "",
-            spo2: parseInt(spo2) || "",
-            suplemenO2: suplemenO2,
-            suhu: parseFloat(suhu) || "",
-            sistolik: parseInt(sistolik) || "",
-            diastolik: parseInt(diastolik) || "",
-            nadi: parseInt(nadi) || "",
-            avpu: avpu,
-            meowsScore: currentMeows.score,
-            triageRisk: currentMeows.risk,
-            tglTriage: new Date().toLocaleDateString("id-ID", {
-              year: "numeric",
-              month: "2-digit",
-              day: "2-digit",
-              hour: "2-digit",
-              minute: "2-digit"
-            })
-          };
-        }
-        return p;
-      })
-    );
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 3000);
+  const handleSave = async () => {
+    const triageData = {
+      beratBadan: beratBadan !== "" ? parseFloat(beratBadan) : "",
+      tinggiBadan: tinggiBadan !== "" ? parseFloat(tinggiBadan) : "",
+      imt: currentBmi !== "" ? parseFloat(currentBmi) : "",
+      lingkarKepala: lingkarKepala !== "" ? parseFloat(lingkarKepala) : "",
+      lingkarLengan: lingkarLengan !== "" ? parseFloat(lingkarLengan) : "",
+      golDarah: golDarah,
+      keluhan: keluhan,
+      
+      rr: rr !== "" ? parseInt(rr) : "",
+      spo2: spo2 !== "" ? parseInt(spo2) : "",
+      suplemenO2: suplemenO2,
+      suhu: suhu !== "" ? parseFloat(suhu) : "",
+      sistolik: sistolik !== "" ? parseInt(sistolik) : "",
+      diastolik: diastolik !== "" ? parseInt(diastolik) : "",
+      nadi: nadi !== "" ? parseInt(nadi) : "",
+      avpu: avpu,
+      meowsScore: currentMeows.score,
+      triageRisk: currentMeows.risk
+    };
+
+    try {
+      await updateTriageDetails(activePatient.id, triageData);
+      setPatients((prev) => 
+        prev.map((p) => {
+          if (p.id === activePatient.id) {
+            return {
+              ...p,
+              ...triageData,
+              tglTriage: new Date().toLocaleDateString("id-ID", {
+                year: "numeric",
+                month: "2-digit",
+                day: "2-digit",
+                hour: "2-digit",
+                minute: "2-digit"
+              })
+            };
+          }
+          return p;
+        })
+      );
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (err) {
+      console.error("Error saving triage details:", err.message);
+    }
   };
 
   const getRiskColor = (risk) => {
@@ -1073,11 +969,28 @@ function TriageWorkspace({ patients, setPatients, selectedId, setSelectedId }) {
   );
 }
 
-// ─── Main Nurse Workspace ───────────────────────────────────────────────────
 export default function NursePanel() {
   const [activePage, setActivePage] = useState("dashboard");
-  const [patients, setPatients] = useState(MOCK_PATIENTS_NURSE);
-  const [selectedId, setSelectedId] = useState(1);
+  const [patients, setPatients] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedId, setSelectedId] = useState(null);
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const data = await fetchActiveVisits();
+        setPatients(data);
+        if (data.length > 0) {
+          setSelectedId(data[0].id);
+        }
+      } catch (err) {
+        console.error("Error loading active visits:", err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, []);
 
   const subpages = {
     dashboard: {
@@ -1154,7 +1067,17 @@ export default function NursePanel() {
           </div>
 
           {/* Subpage component */}
-          <div className="p-4">{current.component}</div>
+          <div className="p-4">
+            {loading ? (
+              <div className="text-center py-5" style={{ marginTop: "10%" }}>
+                <div className="spinner-border text-info" role="status" style={{ color: "#0f766e" }}>
+                  <span className="visually-hidden">Loading...</span>
+                </div>
+              </div>
+            ) : (
+              current.component
+            )}
+          </div>
         </div>
       </div>
     </>

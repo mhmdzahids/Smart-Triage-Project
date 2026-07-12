@@ -1,56 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { fetchActiveVisits, insertNewVisit, deleteVisit } from "./supabaseHelpers";
 
-// ─── Mock Data ────────────────────────────────────────────────────────────────
-const MOCK_PATIENTS = [
-  {
-    id: 1,
-    nama: "Siti Rahayu",
-    nik: "3201234567890001",
-    noBpjs: "0001234567890",
-    tglLahir: "1985-03-12",
-    umur: 39,
-    jenisKelamin: "Perempuan",
-    alamat: "Jl. Merdeka No. 10, Bekasi",
-    noHp: "08123456789",
-    namaKontak: "Budi Rahayu",
-    hubKontak: "Suami",
-    noHpKontak: "08122222222",
-    statusPasien: "BPJS",
-    tglDaftar: "2025-06-20",
-  },
-  {
-    id: 2,
-    nama: "Ahmad Fauzi",
-    nik: "3201234567890002",
-    noBpjs: "",
-    tglLahir: "1992-07-25",
-    umur: 32,
-    jenisKelamin: "Laki-laki",
-    alamat: "Jl. Sudirman No. 5, Jakarta",
-    noHp: "08234567890",
-    namaKontak: "Dewi Fauzi",
-    hubKontak: "Istri",
-    noHpKontak: "08233333333",
-    statusPasien: "Umum",
-    tglDaftar: "2025-06-21",
-  },
-  {
-    id: 3,
-    nama: "Rina Kusuma",
-    nik: "3201234567890003",
-    noBpjs: "0001234567891",
-    tglLahir: "1978-11-30",
-    umur: 46,
-    jenisKelamin: "Perempuan",
-    alamat: "Jl. Gatot Subroto No. 22, Bandung",
-    noHp: "08345678901",
-    namaKontak: "Toni Kusuma",
-    hubKontak: "Suami",
-    noHpKontak: "08344444444",
-    statusPasien: "Asuransi",
-    tglDaftar: "2025-06-22",
-  },
-];
+
 
 const EMPTY_FORM = {
   nama: "",
@@ -371,8 +322,13 @@ function DataPasienPage({ patients, setPatients }) {
     return matchQ && matchS;
   });
 
-  const handleDelete = (id) => {
-    setPatients((prev) => prev.filter((p) => p.id !== id));
+  const handleDelete = async (id) => {
+    try {
+      await deleteVisit(id);
+      setPatients((prev) => prev.filter((p) => p.id !== id));
+    } catch (err) {
+      console.error("Error deleting patient visit:", err.message);
+    }
     setDeleteId(null);
   };
 
@@ -558,10 +514,11 @@ function DataPasienPage({ patients, setPatients }) {
 }
 
 // ─── Page: Tambah Pasien ──────────────────────────────────────────────────────
-function TambahPasienPage({ patients, setPatients, setActivePage }) {
+function TambahPasienPage({ setPatients, setActivePage }) {
   const [form, setForm] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
   const [success, setSuccess] = useState(false);
+  const [generalError, setGeneralError] = useState("");
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -586,25 +543,42 @@ function TambahPasienPage({ patients, setPatients, setActivePage }) {
     return newErrors;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const errs = validate();
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
       return;
     }
-    const newPatient = {
-      ...form,
-      id: patients.length + 1,
-      umur: calcUmur(form.tglLahir),
-      tglDaftar: new Date().toISOString().slice(0, 10),
-    };
-    setPatients((prev) => [...prev, newPatient]);
-    setSuccess(true);
-    setForm(EMPTY_FORM);
-    setTimeout(() => setSuccess(false), 3000);
+    try {
+      const visitId = await insertNewVisit(form);
+      const newPatient = {
+        ...form,
+        id: visitId,
+        patientId: '',
+        umur: calcUmur(form.tglLahir),
+        tglDaftar: new Date().toISOString().slice(0, 10),
+        keluhan: '',
+        beratBadan: '', tinggiBadan: '', imt: '', lingkarKepala: '', lingkarLengan: '', golDarah: '-',
+        rr: '', spo2: '', suplemenO2: 'Tidak', suhu: '', sistolik: '', diastolik: '', nadi: '', avpu: 'Alert',
+        meowsScore: 0, triageRisk: 'Low', tglTriage: '',
+        diagnosa: '', statusDiagnosis: 'Belum Diperiksa'
+      };
+      setPatients((prev) => [newPatient, ...prev]);
+      setSuccess(true);
+      setForm(EMPTY_FORM);
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (err) {
+      if (err.message.includes('23505') || err.message.includes('unique constraint')) {
+        setErrors((prev) => ({ ...prev, nik: "NIK sudah terdaftar" }));
+      } else {
+        console.error("Error inserting patient visit:", err.message);
+        setGeneralError("Gagal menyimpan data pasien: " + err.message);
+        setTimeout(() => setGeneralError(""), 6000);
+      }
+    }
   };
 
-  const Field = ({ label, name, type = "text", placeholder, required, children }) => (
+  const renderField = (label, name, type = "text", placeholder = "", required = false, children = null) => (
     <div>
       <label className="form-label fw-medium" style={{ fontSize: 13, color: "#374151" }}>
         {label}{" "}
@@ -654,6 +628,22 @@ function TambahPasienPage({ patients, setPatients, setActivePage }) {
         </div>
       )}
 
+      {generalError && (
+        <div
+          className="alert d-flex align-items-center gap-2 mb-3"
+          style={{
+            background: "#fee2e2",
+            border: "1px solid #fecaca",
+            color: "#991b1b",
+            borderRadius: 10,
+            fontSize: 13,
+          }}
+        >
+          <i className="bi bi-exclamation-triangle-fill" />
+          {generalError}
+        </div>
+      )}
+
       <div
         className="rounded-3 p-4"
         style={{ background: "#fff", border: "1px solid #e5e9f0" }}
@@ -683,48 +673,52 @@ function TambahPasienPage({ patients, setPatients, setActivePage }) {
           </div>
           <div className="row g-3">
             <div className="col-12 col-md-6">
-              <Field label="Nama Lengkap" name="nama" placeholder="Contoh: Siti Rahayu" required />
+              {renderField("Nama Lengkap", "nama", "text", "Contoh: Siti Rahayu", true)}
             </div>
             <div className="col-12 col-md-6">
-              <Field label="NIK / Nomor KTP" name="nik" placeholder="16 digit NIK" required>
-                <input
-                  type="text"
-                  name="nik"
-                  className={`form-control ${errors.nik ? "is-invalid" : ""}`}
-                  placeholder="16 digit NIK"
-                  value={form.nik}
-                  onChange={handleChange}
-                  maxLength={16}
-                  style={{ fontSize: 13, fontFamily: "monospace" }}
-                />
-                {errors.nik && (
-                  <div className="invalid-feedback" style={{ fontSize: 12 }}>
-                    {errors.nik}
-                  </div>
-                )}
-              </Field>
+              {renderField("NIK / Nomor KTP", "nik", "text", "16 digit NIK", true, (
+                <>
+                  <input
+                    type="text"
+                    name="nik"
+                    className={`form-control ${errors.nik ? "is-invalid" : ""}`}
+                    placeholder="16 digit NIK"
+                    value={form.nik}
+                    onChange={handleChange}
+                    maxLength={16}
+                    style={{ fontSize: 13, fontFamily: "monospace" }}
+                  />
+                  {errors.nik && (
+                    <div className="invalid-feedback" style={{ fontSize: 12 }}>
+                      {errors.nik}
+                    </div>
+                  )}
+                </>
+              ))}
             </div>
             <div className="col-12 col-md-6">
-              <Field label="Nomor BPJS / Asuransi" name="noBpjs" placeholder="13 digit (opsional)">
-                <input
-                  type="text"
-                  name="noBpjs"
-                  className={`form-control ${errors.noBpjs ? "is-invalid" : ""}`}
-                  placeholder="13 digit (opsional)"
-                  value={form.noBpjs}
-                  onChange={handleChange}
-                  maxLength={13}
-                  style={{ fontSize: 13, fontFamily: "monospace" }}
-                />
-                {errors.noBpjs && (
-                  <div className="invalid-feedback" style={{ fontSize: 12 }}>
-                    {errors.noBpjs}
-                  </div>
-                )}
-              </Field>
+              {renderField("Nomor BPJS / Asuransi", "noBpjs", "text", "13 digit (opsional)", false, (
+                <>
+                  <input
+                    type="text"
+                    name="noBpjs"
+                    className={`form-control ${errors.noBpjs ? "is-invalid" : ""}`}
+                    placeholder="13 digit (opsional)"
+                    value={form.noBpjs}
+                    onChange={handleChange}
+                    maxLength={13}
+                    style={{ fontSize: 13, fontFamily: "monospace" }}
+                  />
+                  {errors.noBpjs && (
+                    <div className="invalid-feedback" style={{ fontSize: 12 }}>
+                      {errors.noBpjs}
+                    </div>
+                  )}
+                </>
+              ))}
             </div>
             <div className="col-6 col-md-3">
-              <Field label="Tanggal Lahir" name="tglLahir" type="date" required />
+              {renderField("Tanggal Lahir", "tglLahir", "date", "", true)}
             </div>
             <div className="col-6 col-md-3">
               <label className="form-label fw-medium" style={{ fontSize: 13, color: "#374151" }}>
@@ -800,7 +794,7 @@ function TambahPasienPage({ patients, setPatients, setActivePage }) {
               )}
             </div>
             <div className="col-12 col-md-6">
-              <Field label="Nomor HP" name="noHp" type="tel" placeholder="Contoh: 08123456789" required />
+              {renderField("Nomor HP", "noHp", "tel", "Contoh: 08123456789", true)}
             </div>
           </div>
         </div>
@@ -825,13 +819,13 @@ function TambahPasienPage({ patients, setPatients, setActivePage }) {
           </div>
           <div className="row g-3">
             <div className="col-12 col-md-4">
-              <Field label="Nama Kontak Darurat" name="namaKontak" placeholder="Nama lengkap" required />
+              {renderField("Nama Kontak Darurat", "namaKontak", "text", "Nama lengkap", true)}
             </div>
             <div className="col-12 col-md-4">
-              <Field label="Hubungan dengan Pasien" name="hubKontak" placeholder="Contoh: Ayah, Ibu, Suami, Istri" required />
+              {renderField("Hubungan dengan Pasien", "hubKontak", "text", "Contoh: Ayah, Ibu, Suami, Istri", true)}
             </div>
             <div className="col-12 col-md-4">
-              <Field label="Nomor HP Kontak Darurat" name="noHpKontak" type="tel" placeholder="Contoh: 08123456789" required />
+              {renderField("Nomor HP Kontak Darurat", "noHpKontak", "tel", "Contoh: 08123456789", true)}
             </div>
           </div>
         </div>
@@ -931,12 +925,27 @@ function TambahPasienPage({ patients, setPatients, setActivePage }) {
 // ─── Main App ─────────────────────────────────────────────────────────────────
 export default function AdminPanel() {
   const [activePage, setActivePage] = useState("dashboard");
-  const [patients, setPatients] = useState(MOCK_PATIENTS);
+  const [patients, setPatients] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const data = await fetchActiveVisits();
+        setPatients(data);
+      } catch (err) {
+        console.error("Error loading active visits:", err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, []);
 
   const pages = {
     dashboard: { title: "Dashboard", component: <DashboardPage patients={patients} setActivePage={setActivePage} /> },
     pasien: { title: "Data Pasien", component: <DataPasienPage patients={patients} setPatients={setPatients} /> },
-    tambah: { title: "Tambah Pasien", component: <TambahPasienPage patients={patients} setPatients={setPatients} setActivePage={setActivePage} /> },
+    tambah: { title: "Tambah Pasien", component: <TambahPasienPage setPatients={setPatients} setActivePage={setActivePage} /> },
   };
 
   const current = pages[activePage];
@@ -959,7 +968,17 @@ export default function AdminPanel() {
         {/* Main content area */}
         <div style={{ marginLeft: 240 }}>
           <Topbar title={current.title} />
-          <div className="p-4">{current.component}</div>
+          <div className="p-4">
+            {loading ? (
+              <div className="text-center py-5" style={{ marginTop: "10%" }}>
+                <div className="spinner-border text-primary" role="status">
+                  <span className="visually-hidden">Loading...</span>
+                </div>
+              </div>
+            ) : (
+              current.component
+            )}
+          </div>
         </div>
       </div>
     </>
