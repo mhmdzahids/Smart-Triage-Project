@@ -169,7 +169,7 @@ function Sidebar({ activePage, setActivePage }) {
 }
 
 // ─── Topbar ───────────────────────────────────────────────────────────────────
-function Topbar({ title }) {
+function Topbar({ title, onLogout }) {
   return (
     <div
       className="d-flex align-items-center justify-content-between px-4"
@@ -199,6 +199,16 @@ function Topbar({ title }) {
             day: "numeric",
           })}
         </span>
+        {onLogout && (
+          <button
+            onClick={onLogout}
+            className="btn btn-outline-danger btn-sm d-flex align-items-center gap-1 px-3 py-1.5"
+            style={{ borderRadius: "20px", fontSize: "12px", fontWeight: "600" }}
+          >
+            <i className="bi bi-box-arrow-right" />
+            Keluar
+          </button>
+        )}
       </div>
     </div>
   );
@@ -923,7 +933,7 @@ function TambahPasienPage({ setPatients, setActivePage }) {
 }
 
 // ─── Main App ─────────────────────────────────────────────────────────────────
-export default function AdminPanel() {
+export default function AdminPanel({ onLogout }) {
   const [activePage, setActivePage] = useState("dashboard");
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -967,7 +977,7 @@ export default function AdminPanel() {
 
         {/* Main content area */}
         <div style={{ marginLeft: 240 }}>
-          <Topbar title={current.title} />
+          <Topbar title={current.title} onLogout={onLogout} />
           <div className="p-4">
             {loading ? (
               <div className="text-center py-5" style={{ marginTop: "10%" }}>

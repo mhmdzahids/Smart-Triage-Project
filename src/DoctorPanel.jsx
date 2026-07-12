@@ -1188,7 +1188,7 @@ function DiagnoseWorkspace({ patients, setPatients, selectedId, setSelectedId })
   );
 }
 
-export default function DoctorPanel() {
+export default function DoctorPanel({ onLogout }) {
   const [activePage, setActivePage] = useState("dashboard");
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1283,6 +1283,16 @@ export default function DoctorPanel() {
                   day: "numeric",
                 })}
               </span>
+              {onLogout && (
+                <button
+                  onClick={onLogout}
+                  className="btn btn-outline-danger btn-sm d-flex align-items-center gap-1 px-3 py-1.5"
+                  style={{ borderRadius: "20px", fontSize: "12px", fontWeight: "600" }}
+                >
+                  <i className="bi bi-box-arrow-right" />
+                  Keluar
+                </button>
+              )}
             </div>
           </div>
 

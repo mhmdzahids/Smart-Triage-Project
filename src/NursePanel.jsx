@@ -920,7 +920,7 @@ function TriageWorkspace({ patients, setPatients, selectedId, setSelectedId }) {
   );
 }
 
-export default function NursePanel() {
+export default function NursePanel({ onLogout }) {
   const [activePage, setActivePage] = useState("dashboard");
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1014,6 +1014,16 @@ export default function NursePanel() {
                   day: "numeric",
                 })}
               </span>
+              {onLogout && (
+                <button
+                  onClick={onLogout}
+                  className="btn btn-outline-danger btn-sm d-flex align-items-center gap-1 px-3 py-1.5"
+                  style={{ borderRadius: "20px", fontSize: "12px", fontWeight: "600" }}
+                >
+                  <i className="bi bi-box-arrow-right" />
+                  Keluar
+                </button>
+              )}
             </div>
           </div>
 
