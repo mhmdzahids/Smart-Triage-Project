@@ -305,10 +305,10 @@ function NurseDashboard({ patients, setActivePage, setSelectedId }) {
                       {p.triageRisk ? (
                         <span
                           className={`badge ${p.triageRisk === "High"
-                              ? "bg-danger text-white"
-                              : p.triageRisk === "Medium"
-                                ? "bg-warning text-dark"
-                                : "bg-success text-white"
+                            ? "bg-danger text-white"
+                            : p.triageRisk === "Medium"
+                              ? "bg-warning text-dark"
+                              : "bg-success text-white"
                             }`}
                           style={{ fontSize: 11, padding: "5px 10px" }}
                         >
@@ -389,7 +389,7 @@ function TriageWorkspace({ patients, setPatients, selectedId, setSelectedId }) {
       const avpuVal = avpu === "Alert" ? "A" : avpu === "Voice" ? "V" : avpu === "Pain" ? "P" : avpu === "Unresponsive" ? "U" : "A";
 
       try {
-        const res = await fetch("http://localhost:8000/calculate", {
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/calculate`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

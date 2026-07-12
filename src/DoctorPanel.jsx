@@ -321,10 +321,10 @@ function DoctorDashboard({ patients, setActivePage, setSelectedId }) {
                   <td className="py-3 text-center">
                     <span
                       className={`badge ${p.triageRisk === "High"
-                          ? "bg-danger"
-                          : p.triageRisk === "Medium"
-                            ? "bg-warning text-dark"
-                            : "bg-success"
+                        ? "bg-danger"
+                        : p.triageRisk === "Medium"
+                          ? "bg-warning text-dark"
+                          : "bg-success"
                         }`}
                       style={{ fontSize: 11 }}
                     >
@@ -334,8 +334,8 @@ function DoctorDashboard({ patients, setActivePage, setSelectedId }) {
                   <td className="py-3 text-center">
                     <span
                       className={`badge ${p.statusDiagnosis === "Sudah Diperiksa"
-                          ? "bg-success-subtle text-success border border-success-subtle"
-                          : "bg-warning-subtle text-warning-emphasis border border-warning-subtle"
+                        ? "bg-success-subtle text-success border border-success-subtle"
+                        : "bg-warning-subtle text-warning-emphasis border border-warning-subtle"
                         }`}
                       style={{ fontSize: 11, padding: "4px 8px" }}
                     >
@@ -403,7 +403,7 @@ function DiagnoseWorkspace({ patients, setPatients, selectedId, setSelectedId })
       const avpuVal = avpu === "Alert" ? "A" : avpu === "Voice" ? "V" : avpu === "Pain" ? "P" : avpu === "Unresponsive" ? "U" : "A";
 
       try {
-        const res = await fetch("http://localhost:8000/calculate", {
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/calculate`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
