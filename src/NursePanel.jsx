@@ -1119,13 +1119,218 @@ function TriageWorkspace({ patients, setPatients, selectedId, setSelectedId }) {
   );
 }
 
-export default function NursePanel({ onLogout, userName }) {
+function UserProfilePage({ userName, userEmail, joinedAt, onLogout, onChangePassword, role, themeColor, badgeBg, badgeColor }) {
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handlePasswordSubmit = async (e) => {
+    e.preventDefault();
+    setErrorMsg("");
+    setSuccessMsg("");
+
+    if (newPassword.length < 6) {
+      setErrorMsg("Password baru harus minimal 6 karakter.");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setErrorMsg("Konfirmasi password tidak cocok.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await onChangePassword(newPassword);
+      setSuccessMsg("Password berhasil diperbarui!");
+      setNewPassword("");
+      setConfirmPassword("");
+      setTimeout(() => setShowPasswordForm(false), 2000);
+    } catch (err) {
+      setErrorMsg(err.message || "Gagal mengubah password. Silakan coba kembali.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="container py-4" style={{ maxWidth: "500px" }}>
+      <div className="card border-0 shadow-sm rounded-4 overflow-hidden bg-white">
+        <div style={{ height: "100px", background: `linear-gradient(135deg, ${themeColor} 0%, #1e293b 100%)` }} />
+        <div className="text-center px-4 pb-4" style={{ marginTop: "-50px" }}>
+          <div 
+            className="d-inline-flex justify-content-center align-items-center mb-3 bg-white shadow-sm"
+            style={{
+              width: "100px",
+              height: "100px",
+              borderRadius: "50%",
+              border: "4px solid #fff"
+            }}
+          >
+            <div 
+              className="d-flex justify-content-center align-items-center rounded-circle"
+              style={{
+                width: "88px",
+                height: "88px",
+                background: badgeBg,
+                color: themeColor
+              }}
+            >
+              <i className="bi bi-person-fill" style={{ fontSize: 48 }} />
+            </div>
+          </div>
+
+          <h4 className="fw-bold mb-1 text-dark" style={{ letterSpacing: "-0.5px" }}>
+            {userName || "User"}
+          </h4>
+          
+          <span 
+            className="badge mb-4 px-3 py-2 rounded-pill text-uppercase fw-semibold"
+            style={{
+              background: badgeBg,
+              color: badgeColor,
+              fontSize: "11px",
+              letterSpacing: "0.5px"
+            }}
+          >
+            {role}
+          </span>
+
+          <div className="bg-light rounded-3 p-4 mb-4 text-start" style={{ border: "1px solid #e2e8f0" }}>
+            <h6 className="fw-bold text-dark mb-3" style={{ fontSize: "14px" }}>Informasi Akun</h6>
+            
+            <div className="mb-3 d-flex align-items-center gap-3">
+              <div 
+                className="d-flex align-items-center justify-content-center rounded-circle" 
+                style={{ width: "36px", height: "36px", background: "#fff", border: "1px solid #e2e8f0" }}
+              >
+                <i className="bi bi-envelope text-muted" style={{ fontSize: "16px" }} />
+              </div>
+              <div>
+                <div className="text-muted fw-semibold" style={{ fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.3px" }}>Email</div>
+                <div className="text-dark fw-semibold" style={{ fontSize: "13.5px", wordBreak: "break-all" }}>{userEmail || "-"}</div>
+              </div>
+            </div>
+
+            <div className="d-flex align-items-center gap-3">
+              <div 
+                className="d-flex align-items-center justify-content-center rounded-circle" 
+                style={{ width: "36px", height: "36px", background: "#fff", border: "1px solid #e2e8f0" }}
+              >
+                <i className="bi bi-calendar-event text-muted" style={{ fontSize: "16px" }} />
+              </div>
+              <div>
+                <div className="text-muted fw-semibold" style={{ fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.3px" }}>Bergabung Sejak</div>
+                <div className="text-dark fw-semibold" style={{ fontSize: "13.5px" }}>
+                  {joinedAt ? new Date(joinedAt).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' }) : "-"}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Change Password Form */}
+          <div className="mb-4 text-start">
+            <button
+              type="button"
+              className="btn btn-outline-secondary btn-sm w-100 rounded-pill d-flex align-items-center justify-content-center gap-2"
+              onClick={() => {
+                setShowPasswordForm(!showPasswordForm);
+                setErrorMsg("");
+                setSuccessMsg("");
+              }}
+              style={{ fontSize: "13px", fontWeight: "600", padding: "10px 0" }}
+            >
+              <i className={`bi ${showPasswordForm ? "bi-chevron-up" : "bi-key"}`} />
+              {showPasswordForm ? "Batal Ganti Password" : "Ganti Password Akun"}
+            </button>
+
+            {showPasswordForm && (
+              <form onSubmit={handlePasswordSubmit} className="mt-3 p-3 border rounded-3 bg-white shadow-sm">
+                <div className="mb-3">
+                  <label className="form-label fw-semibold text-muted" style={{ fontSize: "12px" }}>Password Baru</label>
+                  <input
+                    type="password"
+                    className="form-control rounded-3"
+                    placeholder="Minimal 6 karakter"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    required
+                    style={{ fontSize: "13.5px" }}
+                  />
+                </div>
+                <div className="mb-3">
+                  <label className="form-label fw-semibold text-muted" style={{ fontSize: "12px" }}>Konfirmasi Password Baru</label>
+                  <input
+                    type="password"
+                    className="form-control rounded-3"
+                    placeholder="Ulangi password baru"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                    style={{ fontSize: "13.5px" }}
+                  />
+                </div>
+
+                {errorMsg && (
+                  <div className="alert alert-danger py-2 px-3 rounded-3 d-flex align-items-center gap-2" style={{ fontSize: "12.5px" }}>
+                    <i className="bi bi-exclamation-triangle" />
+                    <span>{errorMsg}</span>
+                  </div>
+                )}
+
+                {successMsg && (
+                  <div className="alert alert-success py-2 px-3 rounded-3 d-flex align-items-center gap-2" style={{ fontSize: "12.5px" }}>
+                    <i className="bi bi-check-circle" />
+                    <span>{successMsg}</span>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  className="btn btn-primary w-100 rounded-pill d-flex align-items-center justify-content-center gap-2"
+                  disabled={isSubmitting}
+                  style={{ background: themeColor, borderColor: themeColor, fontSize: "13px", fontWeight: "600", padding: "8px 0" }}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true" />
+                      Memperbarui...
+                    </>
+                  ) : (
+                    <>
+                      <i className="bi bi-save" />
+                      Simpan Password Baru
+                    </>
+                  )}
+                </button>
+              </form>
+            )}
+          </div>
+
+          <button 
+            type="button" 
+            className="btn btn-danger w-100 rounded-pill d-flex align-items-center justify-content-center gap-2 shadow-sm" 
+            onClick={onLogout}
+            style={{ fontSize: "14px", fontWeight: "600", padding: "12px 0" }}
+          >
+            <i className="bi bi-box-arrow-right" />
+            Keluar dari Akun
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function NursePanel({ onLogout, userName, userEmail, joinedAt, onChangePassword }) {
   const [activePage, setActivePage] = useState("dashboard");
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -1168,6 +1373,22 @@ export default function NursePanel({ onLogout, userName }) {
           setPatients={setPatients}
           selectedId={selectedId}
           setSelectedId={setSelectedId}
+        />
+      )
+    },
+    profile: {
+      title: "Profil Pengguna",
+      component: (
+        <UserProfilePage
+          userName={userName}
+          userEmail={userEmail}
+          joinedAt={joinedAt}
+          onLogout={onLogout}
+          onChangePassword={onChangePassword}
+          role="Perawat"
+          themeColor="#0d9488"
+          badgeBg="#ccfbf1"
+          badgeColor="#0f766e"
         />
       )
     }
@@ -1303,74 +1524,14 @@ export default function NursePanel({ onLogout, userName }) {
               <span style={{ fontSize: 9, fontWeight: activePage === "triage" ? "600" : "500", marginTop: 2 }}>Triage & Fisik</span>
             </button>
             <button 
-              onClick={() => setShowLogoutModal(true)} 
+              onClick={() => setActivePage("profile")} 
               className="btn border-0 d-flex flex-column align-items-center justify-content-center p-0"
-              style={{ color: "#64748b", flex: 1 }}
+              style={{ color: activePage === "profile" ? "#0d9488" : "#64748b", flex: 1 }}
             >
               <i className="bi bi-person-circle" style={{ fontSize: 18 }} />
-              <span style={{ fontSize: 9, fontWeight: "500", marginTop: 2 }}>{userName ? userName.slice(0, 10) : "Perawat"}</span>
+              <span style={{ fontSize: 9, fontWeight: activePage === "profile" ? "600" : "500", marginTop: 2 }}>{userName ? userName.slice(0, 10) : "Perawat"}</span>
             </button>
           </div>
-        )}
-
-        {/* Premium Logout Confirmation Modal */}
-        {showLogoutModal && (
-          <>
-            <div 
-              className="modal-backdrop show" 
-              style={{ zIndex: 1040 }} 
-              onClick={() => setShowLogoutModal(false)}
-            />
-            <div 
-              className="modal show d-block" 
-              tabIndex="-1" 
-              style={{ zIndex: 1050, top: "25%" }}
-            >
-              <div className="modal-dialog modal-dialog-centered px-3" style={{ maxWidth: 340 }}>
-                <div className="modal-content border-0 shadow-lg rounded-4 p-3 bg-white">
-                  <div className="text-center p-3">
-                    <div 
-                      className="d-inline-flex justify-content-center align-items-center mb-3"
-                      style={{
-                        width: "55px",
-                        height: "55px",
-                        borderRadius: "50%",
-                        background: "#fee2e2",
-                        color: "#dc3545"
-                      }}
-                    >
-                      <i className="bi bi-box-arrow-right" style={{ fontSize: 24 }} />
-                    </div>
-                    <h5 className="fw-bold mb-2" style={{ color: "#1e293b" }}>Keluar dari Portal?</h5>
-                    <p className="text-muted px-2" style={{ fontSize: 12.5 }}>
-                      Apakah Anda yakin ingin keluar dari aplikasi Smart Triage? Sesi Anda akan berakhir.
-                    </p>
-                  </div>
-                  <div className="d-flex gap-2">
-                    <button 
-                      type="button" 
-                      className="btn btn-light rounded-pill flex-1 w-50" 
-                      onClick={() => setShowLogoutModal(false)}
-                      style={{ fontSize: 13, fontWeight: "600", padding: "10px 0" }}
-                    >
-                      Batal
-                    </button>
-                    <button 
-                      type="button" 
-                      className="btn btn-danger rounded-pill flex-1 w-50" 
-                      onClick={() => {
-                        setShowLogoutModal(false);
-                        onLogout();
-                      }}
-                      style={{ fontSize: 13, fontWeight: "600", padding: "10px 0" }}
-                    >
-                      Keluar
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </>
         )}
       </div>
     </>

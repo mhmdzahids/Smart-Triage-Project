@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { fetchActiveVisits, insertNewVisit, deleteVisit } from "./supabaseHelpers";
+import { fetchActiveVisits, insertNewVisit, deleteVisit, updatePatientIdentity } from "./supabaseHelpers";
 
 
 
@@ -523,6 +523,11 @@ function DataPasienPage({ patients, setPatients }) {
   const [filterStatus, setFilterStatus] = useState("Semua");
   const [deleteId, setDeleteId] = useState(null);
 
+  const [editPatient, setEditPatient] = useState(null);
+  const [editErrors, setEditErrors] = useState({});
+  const [editGeneralError, setEditGeneralError] = useState("");
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+
   const filtered = patients.filter((p) => {
     const q = search.toLowerCase();
     const matchQ =
@@ -542,6 +547,57 @@ function DataPasienPage({ patients, setPatients }) {
       console.error("Error deleting patient visit:", err.message);
     }
     setDeleteId(null);
+  };
+
+  const handleEditChange = (e) => {
+    const { name, value } = e.target;
+    setEditPatient((prev) => {
+      const updated = { ...prev, [name]: value };
+      if (name === "tglLahir") updated.umur = calcUmur(value);
+      return updated;
+    });
+    if (editErrors[name]) setEditErrors((prev) => ({ ...prev, [name]: "" }));
+  };
+
+  const validateEdit = () => {
+    const required = ["nama", "nik", "tglLahir", "jenisKelamin", "alamat", "noHp", "namaKontak", "hubKontak", "noHpKontak", "statusPasien"];
+    const newErrors = {};
+    required.forEach((f) => {
+      if (!editPatient[f] || (typeof editPatient[f] === 'string' && !editPatient[f].trim())) {
+        newErrors[f] = "Wajib diisi";
+      }
+    });
+    if (editPatient.nik && editPatient.nik.length !== 16) newErrors.nik = "NIK harus 16 digit";
+    if (editPatient.noBpjs && editPatient.noBpjs.length !== 13) {
+      newErrors.noBpjs = "No BPJS harus 13 digit";
+    }
+    return newErrors;
+  };
+
+  const handleSaveEdit = async () => {
+    const errs = validateEdit();
+    if (Object.keys(errs).length > 0) {
+      setEditErrors(errs);
+      return;
+    }
+    setIsSavingEdit(true);
+    setEditGeneralError("");
+    try {
+      await updatePatientIdentity(editPatient.patientId, editPatient);
+      setPatients((prev) => 
+        prev.map((p) => (p.id === editPatient.id ? { ...p, ...editPatient } : p))
+      );
+      setEditPatient(null);
+    } catch (err) {
+      if (err.message.includes('23505') || err.message.includes('unique constraint')) {
+        setEditErrors((prev) => ({ ...prev, nik: "NIK sudah terdaftar" }));
+      } else {
+        console.error("Error updating patient details:", err.message);
+        setEditGeneralError("Gagal memperbarui data: " + err.message);
+      }
+    } finally {
+      setIsSavingEdit(false);
+    }
   };
 
   return (
@@ -647,7 +703,18 @@ function DataPasienPage({ patients, setPatients }) {
                     <td className="py-3">
                       <StatusBadge status={p.statusPasien} />
                     </td>
-                    <td className="py-3">
+                    <td className="py-3" style={{ whiteSpace: "nowrap" }}>
+                      <button
+                        className="btn btn-sm btn-outline-primary me-2"
+                        style={{ fontSize: 12 }}
+                        onClick={() => {
+                          setEditPatient(p);
+                          setEditErrors({});
+                          setEditGeneralError("");
+                        }}
+                      >
+                        <i className="bi bi-pencil-square" />
+                      </button>
                       <button
                         className="btn btn-sm btn-outline-danger"
                         style={{ fontSize: 12 }}
@@ -720,6 +787,252 @@ function DataPasienPage({ patients, setPatients }) {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Edit Patient Modal */}
+      {editPatient && (
+        <>
+          <div
+            className="modal-backdrop show"
+            style={{ zIndex: 1040 }}
+            onClick={() => setEditPatient(null)}
+          />
+          <div
+            className="modal show d-block"
+            tabIndex="-1"
+            style={{ zIndex: 1050, top: "5%" }}
+          >
+            <div className="modal-dialog modal-lg modal-dialog-centered px-3">
+              <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden bg-white">
+                
+                {/* Modal Header */}
+                <div className="px-4 py-3 d-flex align-items-center justify-content-between" style={{ background: "#f8fafc", borderBottom: "1px solid #f1f5f9" }}>
+                  <h6 className="modal-title fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                    <i className="bi bi-pencil-square text-primary" />
+                    Edit Identitas Pasien
+                  </h6>
+                  <button
+                    type="button"
+                    className="btn-close"
+                    aria-label="Close"
+                    onClick={() => setEditPatient(null)}
+                  />
+                </div>
+
+                {/* Modal Body */}
+                <div className="modal-body p-4" style={{ maxHeight: "70vh", overflowY: "auto" }}>
+                  
+                  {editGeneralError && (
+                    <div className="alert alert-danger py-2 px-3 rounded-3 d-flex align-items-center gap-2 mb-3" style={{ fontSize: "12.5px" }}>
+                      <i className="bi bi-exclamation-triangle-fill" />
+                      <span>{editGeneralError}</span>
+                    </div>
+                  )}
+
+                  <div className="row g-3">
+                    {/* Section 1: Demographics */}
+                    <div className="col-12">
+                      <div className="fw-semibold text-muted text-uppercase mb-2" style={{ fontSize: "11px", letterSpacing: "0.5px" }}>Identitas Utama</div>
+                    </div>
+                    
+                    <div className="col-md-6">
+                      <label className="form-label fw-medium text-secondary mb-1" style={{ fontSize: 12.5 }}>Nama Lengkap <span className="text-danger">*</span></label>
+                      <input
+                        type="text"
+                        name="nama"
+                        className={`form-control rounded-3 ${editErrors.nama ? "is-invalid" : ""}`}
+                        value={editPatient.nama}
+                        onChange={handleEditChange}
+                        style={{ fontSize: 13.5 }}
+                      />
+                      {editErrors.nama && <div className="invalid-feedback" style={{ fontSize: 11.5 }}>{editErrors.nama}</div>}
+                    </div>
+
+                    <div className="col-md-6">
+                      <label className="form-label fw-medium text-secondary mb-1" style={{ fontSize: 12.5 }}>NIK (16 Digit) <span className="text-danger">*</span></label>
+                      <input
+                        type="text"
+                        name="nik"
+                        className={`form-control rounded-3 ${editErrors.nik ? "is-invalid" : ""}`}
+                        value={editPatient.nik}
+                        onChange={handleEditChange}
+                        maxLength={16}
+                        style={{ fontSize: 13.5 }}
+                      />
+                      {editErrors.nik && <div className="invalid-feedback" style={{ fontSize: 11.5 }}>{editErrors.nik}</div>}
+                    </div>
+
+                    <div className="col-md-6">
+                      <label className="form-label fw-medium text-secondary mb-1" style={{ fontSize: 12.5 }}>No BPJS (13 Digit)</label>
+                      <input
+                        type="text"
+                        name="noBpjs"
+                        className={`form-control rounded-3 ${editErrors.noBpjs ? "is-invalid" : ""}`}
+                        value={editPatient.noBpjs || ""}
+                        onChange={handleEditChange}
+                        maxLength={13}
+                        placeholder="Opsional jika Umum"
+                        style={{ fontSize: 13.5 }}
+                      />
+                      {editErrors.noBpjs && <div className="invalid-feedback" style={{ fontSize: 11.5 }}>{editErrors.noBpjs}</div>}
+                    </div>
+
+                    <div className="col-md-6">
+                      <label className="form-label fw-medium text-secondary mb-1" style={{ fontSize: 12.5 }}>Tanggal Lahir <span className="text-danger">*</span></label>
+                      <input
+                        type="date"
+                        name="tglLahir"
+                        className={`form-control rounded-3 ${editErrors.tglLahir ? "is-invalid" : ""}`}
+                        value={editPatient.tglLahir}
+                        onChange={handleEditChange}
+                        style={{ fontSize: 13.5 }}
+                      />
+                      {editErrors.tglLahir && <div className="invalid-feedback" style={{ fontSize: 11.5 }}>{editErrors.tglLahir}</div>}
+                    </div>
+
+                    <div className="col-md-6">
+                      <label className="form-label fw-medium text-secondary mb-1" style={{ fontSize: 12.5 }}>Jenis Kelamin <span className="text-danger">*</span></label>
+                      <select
+                        name="jenisKelamin"
+                        className={`form-select rounded-3 ${editErrors.jenisKelamin ? "is-invalid" : ""}`}
+                        value={editPatient.jenisKelamin}
+                        onChange={handleEditChange}
+                        style={{ fontSize: 13.5 }}
+                      >
+                        <option value="">Pilih Jenis Kelamin</option>
+                        <option value="Laki-laki">Laki-laki</option>
+                        <option value="Perempuan">Perempuan</option>
+                      </select>
+                      {editErrors.jenisKelamin && <div className="invalid-feedback" style={{ fontSize: 11.5 }}>{editErrors.jenisKelamin}</div>}
+                    </div>
+
+                    <div className="col-md-6">
+                      <label className="form-label fw-medium text-secondary mb-1" style={{ fontSize: 12.5 }}>Status Pasien <span className="text-danger">*</span></label>
+                      <select
+                        name="statusPasien"
+                        className={`form-select rounded-3 ${editErrors.statusPasien ? "is-invalid" : ""}`}
+                        value={editPatient.statusPasien}
+                        onChange={handleEditChange}
+                        style={{ fontSize: 13.5 }}
+                      >
+                        <option value="">Pilih Status</option>
+                        <option value="BPJS">BPJS</option>
+                        <option value="Umum">Umum</option>
+                        <option value="Asuransi">Asuransi</option>
+                        <option value="Perusahaan">Perusahaan</option>
+                      </select>
+                      {editErrors.statusPasien && <div className="invalid-feedback" style={{ fontSize: 11.5 }}>{editErrors.statusPasien}</div>}
+                    </div>
+
+                    <div className="col-md-6">
+                      <label className="form-label fw-medium text-secondary mb-1" style={{ fontSize: 12.5 }}>No HP <span className="text-danger">*</span></label>
+                      <input
+                        type="text"
+                        name="noHp"
+                        className={`form-control rounded-3 ${editErrors.noHp ? "is-invalid" : ""}`}
+                        value={editPatient.noHp}
+                        onChange={handleEditChange}
+                        style={{ fontSize: 13.5 }}
+                      />
+                      {editErrors.noHp && <div className="invalid-feedback" style={{ fontSize: 11.5 }}>{editErrors.noHp}</div>}
+                    </div>
+
+                    <div className="col-md-6">
+                      <label className="form-label fw-medium text-secondary mb-1" style={{ fontSize: 12.5 }}>Alamat Lengkap <span className="text-danger">*</span></label>
+                      <input
+                        type="text"
+                        name="alamat"
+                        className={`form-control rounded-3 ${editErrors.alamat ? "is-invalid" : ""}`}
+                        value={editPatient.alamat}
+                        onChange={handleEditChange}
+                        style={{ fontSize: 13.5 }}
+                      />
+                      {editErrors.alamat && <div className="invalid-feedback" style={{ fontSize: 11.5 }}>{editErrors.alamat}</div>}
+                    </div>
+
+                    {/* Section 2: Emergency Contact */}
+                    <div className="col-12 mt-4">
+                      <div className="fw-semibold text-muted text-uppercase mb-2" style={{ fontSize: "11px", letterSpacing: "0.5px" }}>Kontak Darurat</div>
+                    </div>
+
+                    <div className="col-md-4">
+                      <label className="form-label fw-medium text-secondary mb-1" style={{ fontSize: 12.5 }}>Nama Kontak <span className="text-danger">*</span></label>
+                      <input
+                        type="text"
+                        name="namaKontak"
+                        className={`form-control rounded-3 ${editErrors.namaKontak ? "is-invalid" : ""}`}
+                        value={editPatient.namaKontak}
+                        onChange={handleEditChange}
+                        style={{ fontSize: 13.5 }}
+                      />
+                      {editErrors.namaKontak && <div className="invalid-feedback" style={{ fontSize: 11.5 }}>{editErrors.namaKontak}</div>}
+                    </div>
+
+                    <div className="col-md-4">
+                      <label className="form-label fw-medium text-secondary mb-1" style={{ fontSize: 12.5 }}>Hubungan <span className="text-danger">*</span></label>
+                      <input
+                        type="text"
+                        name="hubKontak"
+                        className={`form-control rounded-3 ${editErrors.hubKontak ? "is-invalid" : ""}`}
+                        value={editPatient.hubKontak}
+                        onChange={handleEditChange}
+                        placeholder="Contoh: Suami, Ibu, Kakak"
+                        style={{ fontSize: 13.5 }}
+                      />
+                      {editErrors.hubKontak && <div className="invalid-feedback" style={{ fontSize: 11.5 }}>{editErrors.hubKontak}</div>}
+                    </div>
+
+                    <div className="col-md-4">
+                      <label className="form-label fw-medium text-secondary mb-1" style={{ fontSize: 12.5 }}>No HP Kontak <span className="text-danger">*</span></label>
+                      <input
+                        type="text"
+                        name="noHpKontak"
+                        className={`form-control rounded-3 ${editErrors.noHpKontak ? "is-invalid" : ""}`}
+                        value={editPatient.noHpKontak}
+                        onChange={handleEditChange}
+                        style={{ fontSize: 13.5 }}
+                      />
+                      {editErrors.noHpKontak && <div className="invalid-feedback" style={{ fontSize: 11.5 }}>{editErrors.noHpKontak}</div>}
+                    </div>
+
+                  </div>
+                </div>
+
+                {/* Modal Footer */}
+                <div className="px-4 py-3 d-flex gap-2 justify-content-end" style={{ background: "#f8fafc", borderTop: "1px solid #f1f5f9" }}>
+                  <button
+                    type="button"
+                    className="btn btn-light rounded-pill px-4"
+                    onClick={() => setEditPatient(null)}
+                    style={{ fontSize: 13.5, fontWeight: "600" }}
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-primary rounded-pill px-4 d-flex align-items-center gap-2"
+                    onClick={handleSaveEdit}
+                    disabled={isSavingEdit}
+                    style={{ background: "#0f4c81", borderColor: "#0f4c81", fontSize: 13.5, fontWeight: "600" }}
+                  >
+                    {isSavingEdit ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true" />
+                        Menyimpan...
+                      </>
+                    ) : (
+                      <>
+                        <i className="bi bi-floppy" />
+                        Simpan Perubahan
+                      </>
+                    )}
+                  </button>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
@@ -1134,13 +1447,218 @@ function TambahPasienPage({ setPatients, setActivePage }) {
   );
 }
 
+function UserProfilePage({ userName, userEmail, joinedAt, onLogout, onChangePassword, role, themeColor, badgeBg, badgeColor }) {
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handlePasswordSubmit = async (e) => {
+    e.preventDefault();
+    setErrorMsg("");
+    setSuccessMsg("");
+
+    if (newPassword.length < 6) {
+      setErrorMsg("Password baru harus minimal 6 karakter.");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setErrorMsg("Konfirmasi password tidak cocok.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await onChangePassword(newPassword);
+      setSuccessMsg("Password berhasil diperbarui!");
+      setNewPassword("");
+      setConfirmPassword("");
+      setTimeout(() => setShowPasswordForm(false), 2000);
+    } catch (err) {
+      setErrorMsg(err.message || "Gagal mengubah password. Silakan coba kembali.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="container py-4" style={{ maxWidth: "500px" }}>
+      <div className="card border-0 shadow-sm rounded-4 overflow-hidden bg-white">
+        <div style={{ height: "100px", background: `linear-gradient(135deg, ${themeColor} 0%, #1e293b 100%)` }} />
+        <div className="text-center px-4 pb-4" style={{ marginTop: "-50px" }}>
+          <div 
+            className="d-inline-flex justify-content-center align-items-center mb-3 bg-white shadow-sm"
+            style={{
+              width: "100px",
+              height: "100px",
+              borderRadius: "50%",
+              border: "4px solid #fff"
+            }}
+          >
+            <div 
+              className="d-flex justify-content-center align-items-center rounded-circle"
+              style={{
+                width: "88px",
+                height: "88px",
+                background: badgeBg,
+                color: themeColor
+              }}
+            >
+              <i className="bi bi-person-fill" style={{ fontSize: 48 }} />
+            </div>
+          </div>
+
+          <h4 className="fw-bold mb-1 text-dark" style={{ letterSpacing: "-0.5px" }}>
+            {userName || "User"}
+          </h4>
+          
+          <span 
+            className="badge mb-4 px-3 py-2 rounded-pill text-uppercase fw-semibold"
+            style={{
+              background: badgeBg,
+              color: badgeColor,
+              fontSize: "11px",
+              letterSpacing: "0.5px"
+            }}
+          >
+            {role}
+          </span>
+
+          <div className="bg-light rounded-3 p-4 mb-4 text-start" style={{ border: "1px solid #e2e8f0" }}>
+            <h6 className="fw-bold text-dark mb-3" style={{ fontSize: "14px" }}>Informasi Akun</h6>
+            
+            <div className="mb-3 d-flex align-items-center gap-3">
+              <div 
+                className="d-flex align-items-center justify-content-center rounded-circle" 
+                style={{ width: "36px", height: "36px", background: "#fff", border: "1px solid #e2e8f0" }}
+              >
+                <i className="bi bi-envelope text-muted" style={{ fontSize: "16px" }} />
+              </div>
+              <div>
+                <div className="text-muted fw-semibold" style={{ fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.3px" }}>Email</div>
+                <div className="text-dark fw-semibold" style={{ fontSize: "13.5px", wordBreak: "break-all" }}>{userEmail || "-"}</div>
+              </div>
+            </div>
+
+            <div className="d-flex align-items-center gap-3">
+              <div 
+                className="d-flex align-items-center justify-content-center rounded-circle" 
+                style={{ width: "36px", height: "36px", background: "#fff", border: "1px solid #e2e8f0" }}
+              >
+                <i className="bi bi-calendar-event text-muted" style={{ fontSize: "16px" }} />
+              </div>
+              <div>
+                <div className="text-muted fw-semibold" style={{ fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.3px" }}>Bergabung Sejak</div>
+                <div className="text-dark fw-semibold" style={{ fontSize: "13.5px" }}>
+                  {joinedAt ? new Date(joinedAt).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' }) : "-"}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Change Password Form */}
+          <div className="mb-4 text-start">
+            <button
+              type="button"
+              className="btn btn-outline-secondary btn-sm w-100 rounded-pill d-flex align-items-center justify-content-center gap-2"
+              onClick={() => {
+                setShowPasswordForm(!showPasswordForm);
+                setErrorMsg("");
+                setSuccessMsg("");
+              }}
+              style={{ fontSize: "13px", fontWeight: "600", padding: "10px 0" }}
+            >
+              <i className={`bi ${showPasswordForm ? "bi-chevron-up" : "bi-key"}`} />
+              {showPasswordForm ? "Batal Ganti Password" : "Ganti Password Akun"}
+            </button>
+
+            {showPasswordForm && (
+              <form onSubmit={handlePasswordSubmit} className="mt-3 p-3 border rounded-3 bg-white shadow-sm">
+                <div className="mb-3">
+                  <label className="form-label fw-semibold text-muted" style={{ fontSize: "12px" }}>Password Baru</label>
+                  <input
+                    type="password"
+                    className="form-control rounded-3"
+                    placeholder="Minimal 6 karakter"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    required
+                    style={{ fontSize: "13.5px" }}
+                  />
+                </div>
+                <div className="mb-3">
+                  <label className="form-label fw-semibold text-muted" style={{ fontSize: "12px" }}>Konfirmasi Password Baru</label>
+                  <input
+                    type="password"
+                    className="form-control rounded-3"
+                    placeholder="Ulangi password baru"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                    style={{ fontSize: "13.5px" }}
+                  />
+                </div>
+
+                {errorMsg && (
+                  <div className="alert alert-danger py-2 px-3 rounded-3 d-flex align-items-center gap-2" style={{ fontSize: "12.5px" }}>
+                    <i className="bi bi-exclamation-triangle" />
+                    <span>{errorMsg}</span>
+                  </div>
+                )}
+
+                {successMsg && (
+                  <div className="alert alert-success py-2 px-3 rounded-3 d-flex align-items-center gap-2" style={{ fontSize: "12.5px" }}>
+                    <i className="bi bi-check-circle" />
+                    <span>{successMsg}</span>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  className="btn btn-primary w-100 rounded-pill d-flex align-items-center justify-content-center gap-2"
+                  disabled={isSubmitting}
+                  style={{ background: themeColor, borderColor: themeColor, fontSize: "13px", fontWeight: "600", padding: "8px 0" }}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true" />
+                      Memperbarui...
+                    </>
+                  ) : (
+                    <>
+                      <i className="bi bi-save" />
+                      Simpan Password Baru
+                    </>
+                  )}
+                </button>
+              </form>
+            )}
+          </div>
+
+          <button 
+            type="button" 
+            className="btn btn-danger w-100 rounded-pill d-flex align-items-center justify-content-center gap-2 shadow-sm" 
+            onClick={onLogout}
+            style={{ fontSize: "14px", fontWeight: "600", padding: "12px 0" }}
+          >
+            <i className="bi bi-box-arrow-right" />
+            Keluar dari Akun
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main App ─────────────────────────────────────────────────────────────────
-export default function AdminPanel({ onLogout, userName }) {
+export default function AdminPanel({ onLogout, userName, userEmail, joinedAt, onChangePassword }) {
   const [activePage, setActivePage] = useState("dashboard");
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -1166,6 +1684,22 @@ export default function AdminPanel({ onLogout, userName }) {
     dashboard: { title: "Dashboard", component: <DashboardPage patients={patients} setActivePage={setActivePage} isMobile={isMobile} userName={userName} /> },
     pasien: { title: "Data Pasien", component: <DataPasienPage patients={patients} setPatients={setPatients} /> },
     tambah: { title: "Tambah Pasien", component: <TambahPasienPage setPatients={setPatients} setActivePage={setActivePage} /> },
+    profile: {
+      title: "Profil Pengguna",
+      component: (
+        <UserProfilePage
+          userName={userName}
+          userEmail={userEmail}
+          joinedAt={joinedAt}
+          onLogout={onLogout}
+          onChangePassword={onChangePassword}
+          role="Admin"
+          themeColor="#0f4c81"
+          badgeBg="#e0f2fe"
+          badgeColor="#0369a1"
+        />
+      )
+    }
   };
 
   const current = pages[activePage];
@@ -1263,74 +1797,14 @@ export default function AdminPanel({ onLogout, userName }) {
               <span style={{ fontSize: 9, fontWeight: activePage === "tambah" ? "600" : "500", marginTop: 2 }}>Tambah</span>
             </button>
             <button 
-              onClick={() => setShowLogoutModal(true)} 
+              onClick={() => setActivePage("profile")} 
               className="btn border-0 d-flex flex-column align-items-center justify-content-center p-0"
-              style={{ color: "#64748b", flex: 1 }}
+              style={{ color: activePage === "profile" ? "#0f4c81" : "#64748b", flex: 1 }}
             >
               <i className="bi bi-person-circle" style={{ fontSize: 18 }} />
-              <span style={{ fontSize: 9, fontWeight: "500", marginTop: 2 }}>{userName ? userName.slice(0, 10) : "Admin"}</span>
+              <span style={{ fontSize: 9, fontWeight: activePage === "profile" ? "600" : "500", marginTop: 2 }}>{userName ? userName.slice(0, 10) : "Admin"}</span>
             </button>
           </div>
-        )}
-
-        {/* Premium Logout Confirmation Modal */}
-        {showLogoutModal && (
-          <>
-            <div 
-              className="modal-backdrop show" 
-              style={{ zIndex: 1040 }} 
-              onClick={() => setShowLogoutModal(false)}
-            />
-            <div 
-              className="modal show d-block" 
-              tabIndex="-1" 
-              style={{ zIndex: 1050, top: "25%" }}
-            >
-              <div className="modal-dialog modal-dialog-centered px-3" style={{ maxWidth: 340 }}>
-                <div className="modal-content border-0 shadow-lg rounded-4 p-3 bg-white">
-                  <div className="text-center p-3">
-                    <div 
-                      className="d-inline-flex justify-content-center align-items-center mb-3"
-                      style={{
-                        width: "55px",
-                        height: "55px",
-                        borderRadius: "50%",
-                        background: "#fee2e2",
-                        color: "#dc3545"
-                      }}
-                    >
-                      <i className="bi bi-box-arrow-right" style={{ fontSize: 24 }} />
-                    </div>
-                    <h5 className="fw-bold mb-2" style={{ color: "#1e293b" }}>Keluar dari Portal?</h5>
-                    <p className="text-muted px-2" style={{ fontSize: 12.5 }}>
-                      Apakah Anda yakin ingin keluar dari aplikasi Smart Triage? Sesi Anda akan berakhir.
-                    </p>
-                  </div>
-                  <div className="d-flex gap-2">
-                    <button 
-                      type="button" 
-                      className="btn btn-light rounded-pill flex-1 w-50" 
-                      onClick={() => setShowLogoutModal(false)}
-                      style={{ fontSize: 13, fontWeight: "600", padding: "10px 0" }}
-                    >
-                      Batal
-                    </button>
-                    <button 
-                      type="button" 
-                      className="btn btn-danger rounded-pill flex-1 w-50" 
-                      onClick={() => {
-                        setShowLogoutModal(false);
-                        onLogout();
-                      }}
-                      style={{ fontSize: 13, fontWeight: "600", padding: "10px 0" }}
-                    >
-                      Keluar
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </>
         )}
       </div>
     </>

@@ -170,6 +170,13 @@ function App() {
     await supabase.auth.signOut();
   };
 
+  const handleChangePassword = async (newPassword) => {
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword
+    });
+    if (error) throw error;
+  };
+
   const getActiveRole = () => {
     if (overrideRole) return overrideRole;
     if (userProfile?.role) return userProfile.role;
@@ -179,6 +186,8 @@ function App() {
 
   const activeRole = getActiveRole();
   const activeName = userProfile?.name || session?.user?.user_metadata?.name || "User";
+  const activeEmail = userProfile?.email || session?.user?.email || "";
+  const joinedAt = userProfile?.created_at || session?.user?.created_at || "";
 
   if (loading) {
     return (
@@ -264,9 +273,9 @@ function App() {
       {/* Main Routing UI */}
       {session ? (
         <>
-          {activeRole === 'ADMIN' && <AdminPanel onLogout={handleLogout} userName={activeName} />}
-          {activeRole === 'NURSE' && <NursePanel onLogout={handleLogout} userName={activeName} />}
-          {activeRole === 'DOCTOR' && <DoctorPanel onLogout={handleLogout} userName={activeName} />}
+          {activeRole === 'ADMIN' && <AdminPanel onLogout={handleLogout} userName={activeName} userEmail={activeEmail} joinedAt={joinedAt} onChangePassword={handleChangePassword} />}
+          {activeRole === 'NURSE' && <NursePanel onLogout={handleLogout} userName={activeName} userEmail={activeEmail} joinedAt={joinedAt} onChangePassword={handleChangePassword} />}
+          {activeRole === 'DOCTOR' && <DoctorPanel onLogout={handleLogout} userName={activeName} userEmail={activeEmail} joinedAt={joinedAt} onChangePassword={handleChangePassword} />}
           {!activeRole && (
             <div 
               className="d-flex justify-content-center align-items-center text-center p-5 bg-light"

@@ -367,3 +367,27 @@ export async function deleteVisit(visitId) {
     throw new Error('Error deleting visit: ' + error.message);
   }
 }
+
+export async function updatePatientIdentity(patientId, formData) {
+  const patientRecord = {
+    full_name: formData.nama,
+    nik: formData.nik,
+    insurance_number: formData.noBpjs || null,
+    date_of_birth: formData.tglLahir || null,
+    gender: mapGenderToDb(formData.jenisKelamin),
+    address: formData.alamat || null,
+    phone_number: formData.noHp || null,
+    emergency_contact_name: formData.namaKontak || null,
+    emergency_contact_relation: formData.hubKontak || null,
+    patient_status: mapPatientStatusToDb(formData.statusPasien)
+  };
+
+  const { error } = await supabase
+    .from('patients')
+    .update(patientRecord)
+    .eq('patient_id', patientId);
+
+  if (error) {
+    throw new Error('Error updating patient details: ' + error.message);
+  }
+}
