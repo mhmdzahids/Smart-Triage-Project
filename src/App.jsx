@@ -80,11 +80,32 @@ function App() {
       }
     };
 
+    // 4. Secret Gesture for Mobile: Tap top-left logo/brand area 5 times within 2s
+    let tapCount = 0;
+    let lastTapTime = 0;
+    const handleTapToggle = (e) => {
+      if (e.clientX < 150 && e.clientY < 60) {
+        const now = Date.now();
+        if (now - lastTapTime < 800) {
+          tapCount++;
+        } else {
+          tapCount = 1;
+        }
+        lastTapTime = now;
+        if (tapCount >= 5) {
+          setShowSwitcher(prev => !prev);
+          tapCount = 0;
+        }
+      }
+    };
+
     window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('click', handleTapToggle);
 
     return () => {
       subscription.unsubscribe();
       window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('click', handleTapToggle);
     };
   }, []);
 
@@ -215,57 +236,89 @@ function App() {
         href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css"
       />
 
-      {/* Dev Mode Switcher (only toggleable with Ctrl + `) */}
-      {showSwitcher && (
+      <style>{`
+        @media (max-width: 767.98px) {
+          .desktop-role-switcher {
+            bottom: 80px !important;
+            width: 90% !important;
+            max-width: 360px !important;
+            border-radius: 16px !important;
+            flex-wrap: wrap !important;
+            justify-content: center !important;
+            padding: 8px !important;
+          }
+          .role-switch-btn {
+            flex: 1 1 auto;
+            justify-content: center;
+          }
+        }
+        .role-switch-btn {
+          transition: all 0.2s ease;
+          border: none;
+          font-size: 12px;
+          font-weight: 600;
+          display: inline-flex !important;
+          align-items: center !important;
+          gap: 6px !important;
+        }
+        .role-switch-btn:hover:not(.active) {
+          background-color: #f1f5f9;
+          color: #1e293b;
+        }
+      `}</style>
+
+      {/* Floating Bottom Selector / Switcher */}
+      {session && showSwitcher && (
         <div 
+          className="desktop-role-switcher"
           style={{ 
             position: 'fixed', 
-            bottom: '20px', 
-            right: '20px', 
-            zIndex: 99999,
-            boxShadow: '0 10px 30px rgba(0,0,0,0.2)'
+            bottom: '24px', 
+            left: '50%', 
+            transform: 'translateX(-50%)', 
+            zIndex: 9999,
+            boxShadow: '0 10px 30px rgba(0,0,0,0.08)',
+            backgroundColor: '#ffffff',
+            borderRadius: '100px',
+            padding: '4px',
+            border: '1px solid rgba(0,0,0,0.06)',
+            display: 'flex',
+            gap: '3px',
+            alignItems: 'center'
           }}
-          className="rounded-pill p-1 bg-white border d-flex gap-1 align-items-center"
         >
-          <span className="text-muted px-2 fw-semibold" style={{ fontSize: 11 }}>DEV SW:</span>
           <button
             onClick={() => setOverrideRole('ADMIN')}
-            className="btn btn-sm rounded-pill px-3 transition-all"
+            className={`btn btn-sm rounded-pill px-3 py-1.5 role-switch-btn ${activeRole === 'ADMIN' ? 'active' : ''}`}
             style={{
-              background: activeRole === 'ADMIN' ? '#0f4c81' : 'transparent',
+              background: activeRole === 'ADMIN' ? '#145c9c' : 'transparent',
               color: activeRole === 'ADMIN' ? '#fff' : '#64748b',
-              border: 'none',
-              fontSize: '11px',
-              fontWeight: '600'
             }}
           >
-            Admin
+            <i className={`bi ${activeRole === 'ADMIN' ? 'bi-shield-fill-check' : 'bi-shield-check'}`} style={{ fontSize: '13px' }} />
+            Admin Panel
           </button>
           <button
             onClick={() => setOverrideRole('NURSE')}
-            className="btn btn-sm rounded-pill px-3 transition-all"
+            className={`btn btn-sm rounded-pill px-3 py-1.5 role-switch-btn ${activeRole === 'NURSE' ? 'active' : ''}`}
             style={{
               background: activeRole === 'NURSE' ? '#0d9488' : 'transparent',
               color: activeRole === 'NURSE' ? '#fff' : '#64748b',
-              border: 'none',
-              fontSize: '11px',
-              fontWeight: '600'
             }}
           >
-            Nurse
+            <i className="bi bi-activity" style={{ fontSize: '13px' }} />
+            Nurse Panel
           </button>
           <button
             onClick={() => setOverrideRole('DOCTOR')}
-            className="btn btn-sm rounded-pill px-3 transition-all"
+            className={`btn btn-sm rounded-pill px-3 py-1.5 role-switch-btn ${activeRole === 'DOCTOR' ? 'active' : ''}`}
             style={{
-              background: activeRole === 'DOCTOR' ? '#4f46e5' : 'transparent',
+              background: activeRole === 'DOCTOR' ? '#6366f1' : 'transparent',
               color: activeRole === 'DOCTOR' ? '#fff' : '#64748b',
-              border: 'none',
-              fontSize: '11px',
-              fontWeight: '600'
             }}
           >
-            Doctor
+            <i className="bi bi-hospital" style={{ fontSize: '13px' }} />
+            Doctor Panel
           </button>
         </div>
       )}
@@ -321,8 +374,8 @@ function App() {
                     width: '60px',
                     height: '60px',
                     borderRadius: '50%',
-                    background: 'linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)',
-                    color: '#4f46e5'
+                    background: 'linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%)',
+                    color: '#145c9c'
                   }}
                 >
                   <i className="bi bi-heart-pulse-fill" style={{ fontSize: 26 }} />
@@ -377,7 +430,7 @@ function App() {
                     type="submit" 
                     className="btn w-100 rounded-pill py-2.5 fw-semibold text-white transition-all shadow-sm"
                     style={{
-                      background: 'linear-gradient(90deg, #4f46e5 0%, #6366f1 100%)',
+                      background: 'linear-gradient(90deg, #145c9c 0%, #3b82f6 100%)',
                       border: 'none',
                       fontSize: 14
                     }}
@@ -395,7 +448,7 @@ function App() {
                       <button 
                         type="button" 
                         className="btn btn-link p-0 text-decoration-none fw-semibold"
-                        style={{ fontSize: 12, color: '#4f46e5' }}
+                        style={{ fontSize: 12, color: '#145c9c' }}
                         onClick={() => {
                           setAuthMode('register');
                           setLoginError('');
@@ -495,7 +548,7 @@ function App() {
                     type="submit" 
                     className="btn w-100 rounded-pill py-2.5 fw-semibold text-white transition-all shadow-sm"
                     style={{
-                      background: 'linear-gradient(90deg, #4f46e5 0%, #6366f1 100%)',
+                      background: 'linear-gradient(90deg, #145c9c 0%, #3b82f6 100%)',
                       border: 'none',
                       fontSize: 14
                     }}
@@ -513,7 +566,7 @@ function App() {
                       <button 
                         type="button" 
                         className="btn btn-link p-0 text-decoration-none fw-semibold"
-                        style={{ fontSize: 12, color: '#4f46e5' }}
+                        style={{ fontSize: 12, color: '#145c9c' }}
                         onClick={() => {
                           setAuthMode('login');
                           setRegError('');

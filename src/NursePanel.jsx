@@ -71,9 +71,10 @@ function downloadTriageCSV(patient) {
 }
 
 // ─── Sidebar Component (Nurse Teal Vibes) ────────────────────────────────────
-function SidebarNurse({ activePage, setActivePage, userName }) {
+function SidebarNurse({ activePage, setActivePage, userName, onLogout }) {
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
   const navItems = [
-    { id: "dashboard", icon: "bi-activity", label: "Dashboard Nurse" },
+    { id: "dashboard", icon: "bi-grid-fill", label: "Dashboard Nurse" },
     { id: "triage", icon: "bi-clipboard2-pulse-fill", label: "Triage & Fisik" },
   ];
 
@@ -81,96 +82,159 @@ function SidebarNurse({ activePage, setActivePage, userName }) {
     <div
       className="d-flex flex-column"
       style={{
-        width: 250,
+        width: 260,
         minHeight: "100vh",
-        background: "linear-gradient(160deg, #0d9488 0%, #0b665c 100%)", // Teal Medical theme
+        background: "linear-gradient(180deg, #0b4c46 0%, #032b27 100%)", // Teal Medical theme
         color: "#fff",
         position: "fixed",
         top: 0,
         left: 0,
         zIndex: 100,
-        boxShadow: "2px 0 12px rgba(0,0,0,0.15)",
+        boxShadow: "4px 0 20px rgba(0,0,0,0.15)",
       }}
     >
       {/* Brand */}
       <div
         className="d-flex align-items-center gap-2 px-4 py-4"
-        style={{ borderBottom: "1px solid rgba(255,255,255,0.12)" }}
+        style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}
       >
         <div
           style={{
-            background: "#fff",
+            background: "#0d9488",
             borderRadius: 10,
             width: 36,
             height: 36,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            boxShadow: "0 2px 5px rgba(0,0,0,0.1)"
+            boxShadow: "0 2px 6px rgba(13, 148, 136, 0.4)"
           }}
         >
-          <i className="bi bi-lungs-fill text-teal" style={{ fontSize: 18, color: "#0d9488" }} />
+          <i className="bi bi-lungs-fill text-white" style={{ fontSize: 18 }} />
         </div>
         <div>
           <div style={{ fontWeight: 700, fontSize: 15, letterSpacing: 0.5 }}>
             Smart-Triage
           </div>
-          <div style={{ fontSize: 11, opacity: 0.85 }}>Nurse Workstation</div>
+          <div style={{ fontSize: 11, opacity: 0.7 }}>Nurse Workstation</div>
         </div>
       </div>
 
       {/* Nav */}
-      <nav className="mt-3 flex-grow-1">
-        {navItems.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => setActivePage(item.id)}
-            className="d-flex align-items-center gap-3 w-100 border-0 text-start px-4 py-3"
-            style={{
-              background:
-                activePage === item.id
-                  ? "rgba(255,255,255,0.15)"
-                  : "transparent",
-              color: "#fff",
-              fontWeight: activePage === item.id ? 600 : 400,
-              fontSize: 14,
-              borderLeft:
-                activePage === item.id
-                  ? "4px solid #ccfbf1" // Light teal accent line
-                  : "4px solid transparent",
-              cursor: "pointer",
-              transition: "all 0.2s",
-            }}
-          >
-            <i className={`bi ${item.icon}`} style={{ fontSize: 16 }} />
-            {item.label}
-          </button>
-        ))}
+      <nav className="mt-4 flex-grow-1">
+        {navItems.map((item) => {
+          const isActive = activePage === item.id;
+          return (
+            <button
+              key={item.id}
+              onClick={() => setActivePage(item.id)}
+              className="d-flex align-items-center gap-3 border-0 text-start py-3 px-4 transition-all"
+              style={{
+                width: "100%",
+                background: isActive ? "rgba(255, 255, 255, 0.05)" : "transparent",
+                color: isActive ? "#fff" : "rgba(255, 255, 255, 0.65)",
+                fontWeight: isActive ? 600 : 400,
+                fontSize: 14,
+                cursor: "pointer",
+                borderLeft: isActive ? "4px solid #0d9488" : "4px solid transparent",
+                borderRadius: "0px",
+                margin: "0px"
+              }}
+            >
+              <i
+                className={`bi ${item.icon}`}
+                style={{
+                  fontSize: 16,
+                  color: isActive ? "#2dd4bf" : "rgba(255, 255, 255, 0.65)",
+                  transition: "color 0.2s"
+                }}
+              />
+              {item.label}
+            </button>
+          );
+        })}
       </nav>
 
-      {/* User Info */}
+      {/* User Info & dropdown popover */}
       <div
-        className="px-4 py-3"
-        style={{ borderTop: "1px solid rgba(255,255,255,0.12)", fontSize: 12 }}
+        className="px-3 py-3 position-relative"
+        style={{ borderTop: "1px solid rgba(255,255,255,0.08)", fontSize: 12 }}
       >
-        <div className="d-flex align-items-center gap-2">
+        {showProfileMenu && (
           <div
             style={{
-              width: 32,
-              height: 32,
-              borderRadius: "50%",
-              background: "rgba(255,255,255,0.2)",
+              position: "absolute",
+              bottom: "65px",
+              left: "12px",
+              right: "12px",
+              background: "#fff",
+              borderRadius: "12px",
+              boxShadow: "0 10px 25px rgba(0,0,0,0.15)",
+              padding: "6px",
               display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
+              flexDirection: "column",
+              zIndex: 1000
             }}
           >
-            <i className="bi bi-person-badge-fill" />
+            <button
+              onClick={() => {
+                setActivePage("profile");
+                setShowProfileMenu(false);
+              }}
+              className="btn d-flex align-items-center gap-2 text-start px-3 py-2 border-0"
+              style={{ fontSize: "13px", color: "#334155", borderRadius: "8px", fontWeight: "500" }}
+            >
+              <i className="bi bi-person-gear text-muted" style={{ fontSize: "15px" }} />
+              Profile
+            </button>
+            <button
+              onClick={() => {
+                if (onLogout) onLogout();
+                setShowProfileMenu(false);
+              }}
+              className="btn d-flex align-items-center gap-2 text-start px-3 py-2 border-0"
+              style={{ fontSize: "13px", color: "#dc2626", borderRadius: "8px", fontWeight: "500" }}
+            >
+              <i className="bi bi-box-arrow-right" style={{ fontSize: "15px" }} />
+              Keluar
+            </button>
           </div>
-          <div>
-            <div style={{ fontWeight: 600 }}>Halo! Ns. {userName || "User"}</div>
-            <div style={{ opacity: 0.75 }}>Perawat Triase</div>
+        )}
+
+        <div className="d-flex align-items-center justify-content-between">
+          <div className="d-flex align-items-center gap-2" style={{ minWidth: 0 }}>
+            {/* Initials Avatar */}
+            <div
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: "50%",
+                background: "rgba(255,255,255,0.15)",
+                color: "#fff",
+                fontWeight: "600",
+                fontSize: 13,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0
+              }}
+            >
+              {getInitials(userName)}
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontWeight: 600, color: "#fff", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
+                {userName ? `Ns. ${userName}` : "Perawat"}
+              </div>
+              <div style={{ opacity: 0.5, fontSize: 10 }}>Perawat Triase</div>
+            </div>
           </div>
+          <button
+            onClick={() => setShowProfileMenu(!showProfileMenu)}
+            className="btn btn-link p-1 text-white border-0"
+            style={{ opacity: 0.7 }}
+          >
+            <i className="bi bi-three-dots-vertical" style={{ fontSize: 15 }} />
+          </button>
         </div>
       </div>
     </div>
@@ -301,7 +365,7 @@ function NurseDashboard({ patients, setActivePage, setSelectedId, isMobile, user
                       >
                         {getInitials(p.nama)}
                       </div>
-                      
+
                       {/* Patient info */}
                       <div>
                         <div className="fw-bold" style={{ color: "#1e293b", fontSize: 14 }}>{p.nama}</div>
@@ -326,10 +390,10 @@ function NurseDashboard({ patients, setActivePage, setSelectedId, isMobile, user
                         {riskLabel}
                       </span>
                       {p.meowsScore !== undefined && (
-                        <span 
-                          className="badge text-white" 
-                          style={{ 
-                            background: p.meowsScore >= 7 ? "#dc3545" : p.meowsScore >= 5 ? "#ffc107" : "#198754", 
+                        <span
+                          className="badge text-white"
+                          style={{
+                            background: p.meowsScore >= 7 ? "#dc3545" : p.meowsScore >= 5 ? "#ffc107" : "#198754",
                             fontSize: 10,
                             borderRadius: 4
                           }}
@@ -372,12 +436,12 @@ function NurseDashboard({ patients, setActivePage, setSelectedId, isMobile, user
     );
   }
 
-  // Original desktop layout (kept original)
+  // Original desktop layout (updated to match mock)
   const statsDesktop = [
-    { label: "Pasien Ditriase", value: triagedCount, icon: "bi-clipboard2-check", color: "#0d9488", bg: "#f0fdfa" },
-    { label: "Resiko Tinggi (MEOWS >= 7)", value: highRiskCount, icon: "bi-exclamation-octagon-fill", color: "#dc3545", bg: "#fdf2f2" },
-    { label: "Resiko Sedang (MEOWS 5-6)", value: medRiskCount, icon: "bi-exclamation-triangle-fill", color: "#ffc107", bg: "#fffbeb" },
-    { label: "Resiko Rendah (MEOWS 0-4)", value: lowRiskCount, icon: "bi-check-circle-fill", color: "#198754", bg: "#f0fdf4" }
+    { label: "PASIEN DITRIASE", value: triagedCount, icon: "bi-clipboard2-check-fill", color: "#0d9488", bg: "#f0fdfa", extraIcon: "bi-check-circle", extraIconColor: "#2dd4bf" },
+    { label: "RESIKO TINGGI (MEOWS >= 7)", value: highRiskCount, icon: "bi-exclamation-octagon-fill", color: "#ef4444", bg: "#fdf2f2", extraIcon: "bi-exclamation-octagon", extraIconColor: "#fca5a5" },
+    { label: "RESIKO SEDANG (MEOWS 5-6)", value: medRiskCount, icon: "bi-exclamation-triangle-fill", color: "#f59e0b", bg: "#fffbeb", extraIcon: "bi-exclamation-triangle", extraIconColor: "#fcd34d" },
+    { label: "RESIKO RENDAH (MEOWS 0-4)", value: lowRiskCount, icon: "bi-check-circle-fill", color: "#10b981", bg: "#f0fdf4", extraIcon: "bi-shield-check", extraIconColor: "#6ee7b7" }
   ];
 
   return (
@@ -387,14 +451,18 @@ function NurseDashboard({ patients, setActivePage, setSelectedId, isMobile, user
         {statsDesktop.map((s) => (
           <div key={s.label} className="col-6 col-xl-3">
             <div
-              className="rounded-3 p-3 h-100 shadow-sm"
-              style={{ background: "#fff", border: "1px solid #e2e8f0" }}
+              className="card border-0 p-4 h-100 bg-white"
+              style={{
+                borderRadius: "20px",
+                boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.03)",
+                border: "1px solid rgba(0,0,0,0.01)"
+              }}
             >
-              <div className="d-flex align-items-center gap-3">
+              <div className="d-flex align-items-center justify-content-between mb-3">
                 <div
                   style={{
-                    width: 46,
-                    height: 46,
+                    width: 42,
+                    height: 42,
                     borderRadius: 12,
                     background: s.bg,
                     display: "flex",
@@ -402,13 +470,24 @@ function NurseDashboard({ patients, setActivePage, setSelectedId, isMobile, user
                     justifyContent: "center",
                   }}
                 >
-                  <i className={`bi ${s.icon}`} style={{ fontSize: 20, color: s.color }} />
+                  <i className={`bi ${s.icon}`} style={{ fontSize: 18, color: s.color }} />
                 </div>
-                <div>
-                  <div style={{ fontSize: 24, fontWeight: 700, color: "#0f766e" }}>
-                    {s.value}
-                  </div>
-                  <div style={{ fontSize: 12, color: "#64748b" }}>{s.label}</div>
+                <i className={`bi ${s.extraIcon}`} style={{ fontSize: 16, color: s.extraIconColor }} />
+              </div>
+              <div>
+                <div className="fw-bold text-dark" style={{ fontSize: 32, lineHeight: 1.2 }}>
+                  {s.value}
+                </div>
+                <div
+                  className="text-uppercase fw-bold"
+                  style={{
+                    fontSize: 10,
+                    color: "#94a3b8",
+                    letterSpacing: "0.8px",
+                    marginTop: 4
+                  }}
+                >
+                  {s.label}
                 </div>
               </div>
             </div>
@@ -418,63 +497,99 @@ function NurseDashboard({ patients, setActivePage, setSelectedId, isMobile, user
 
       {/* Patient Triage Summary */}
       <div
-        className="rounded-3 p-4 shadow-sm"
-        style={{ background: "#fff", border: "1px solid #e2e8f0" }}
+        className="card border-0 p-4 bg-white"
+        style={{
+          borderRadius: "20px",
+          boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.03)",
+          border: "1px solid rgba(0,0,0,0.01)"
+        }}
       >
-        <div className="d-flex align-items-center justify-content-between mb-3">
-          <h6 className="fw-semibold mb-0" style={{ color: "#0f766e", fontSize: 16 }}>
-            <i className="bi bi-clock-history me-2" />
-            Triage Pasien Terbaru
-          </h6>
+        <div className="d-flex align-items-center justify-content-between mb-4">
+          <div>
+            <h5 className="fw-bold mb-1 text-dark" style={{ letterSpacing: "-0.3px" }}>
+              Triage Pasien Terbaru
+            </h5>
+            <div className="text-muted" style={{ fontSize: 13 }}>
+              Daftar registrasi pasien & status triase IGD hari ini
+            </div>
+          </div>
           <button
-            className="btn btn-sm btn-teal"
+            className="btn btn-sm text-white fw-bold d-flex align-items-center gap-1.5 px-4 py-2 rounded-pill"
             style={{
-              background: "#ccfbf1",
-              color: "#0f766e",
+              background: "#0d9488",
               border: "none",
-              fontWeight: 500,
               fontSize: 13,
+              boxShadow: "0 4px 12px rgba(13, 148, 136, 0.25)"
             }}
             onClick={() => setActivePage("triage")}
           >
-            Mulai Triase Baru <i className="bi bi-arrow-right ms-1" />
+            Mulai Triase Baru <i className="bi bi-arrow-right" />
           </button>
         </div>
 
         <div className="table-responsive">
-          <table className="table table-hover align-middle mb-0" style={{ fontSize: 13 }}>
-            <thead style={{ background: "#f8fafc" }}>
-              <tr>
-                <th className="fw-semibold text-muted border-0 py-2">Nama Pasien</th>
-                <th className="fw-semibold text-muted border-0 py-2">Umur</th>
-                <th className="fw-semibold text-muted border-0 py-2">Tinggi / Berat</th>
-                <th className="fw-semibold text-muted border-0 py-2">Suhu</th>
-                <th className="fw-semibold text-muted border-0 py-2">SpO2 / Tensi</th>
-                <th className="fw-semibold text-muted border-0 py-2 text-center">MEOWS Score</th>
-                <th className="fw-semibold text-muted border-0 py-2 text-center">Triage Risk</th>
-                <th className="fw-semibold text-muted border-0 py-2">Diagnosis Dokter</th>
-                <th className="fw-semibold text-muted border-0 py-2 text-center">Aksi</th>
+          <table className="table table-hover align-middle mb-0" style={{ fontSize: 13.5 }}>
+            <thead>
+              <tr style={{ borderBottom: "1px solid #f1f5f9" }}>
+                <th className="fw-bold text-uppercase pb-3 border-0" style={{ color: "#94a3b8", fontSize: 10, letterSpacing: "0.5px" }}>NAMA PASIEN</th>
+                <th className="fw-bold text-uppercase pb-3 border-0" style={{ color: "#94a3b8", fontSize: 10, letterSpacing: "0.5px" }}>UMUR</th>
+                <th className="fw-bold text-uppercase pb-3 border-0" style={{ color: "#94a3b8", fontSize: 10, letterSpacing: "0.5px" }}>TINGGI / BERAT</th>
+                <th className="fw-bold text-uppercase pb-3 border-0" style={{ color: "#94a3b8", fontSize: 10, letterSpacing: "0.5px" }}>SUHU</th>
+                <th className="fw-bold text-uppercase pb-3 border-0" style={{ color: "#94a3b8", fontSize: 10, letterSpacing: "0.5px" }}>SPO2 / TENSI</th>
+                <th className="fw-bold text-uppercase pb-3 border-0 text-center" style={{ color: "#94a3b8", fontSize: 10, letterSpacing: "0.5px" }}>MEOWS</th>
+                <th className="fw-bold text-uppercase pb-3 border-0 text-center" style={{ color: "#94a3b8", fontSize: 10, letterSpacing: "0.5px" }}>RISK LEVEL</th>
+                <th className="fw-bold text-uppercase pb-3 border-0" style={{ color: "#94a3b8", fontSize: 10, letterSpacing: "0.5px" }}>DIAGNOSIS DOKTER</th>
+                <th className="fw-bold text-uppercase pb-3 border-0 text-center" style={{ color: "#94a3b8", fontSize: 10, letterSpacing: "0.5px" }}>AKSI</th>
               </tr>
             </thead>
             <tbody>
               {patients.map((p) => {
                 const bmi = calcBMI(p.beratBadan, p.tinggiBadan);
+
+                // Risk-based styling for avatar and badge
+                let riskStyle = { bg: "#f1f5f9", color: "#64748b", text: "Belum Ditriase" };
+                if (p.triageRisk === "High") {
+                  riskStyle = { bg: "#fde8e8", color: "#dc3545", text: "Tinggi" };
+                } else if (p.triageRisk === "Medium") {
+                  riskStyle = { bg: "#fff8e1", color: "#d97706", text: "Sedang" };
+                } else if (p.triageRisk === "Low") {
+                  riskStyle = { bg: "#e6f4ea", color: "#198754", text: "Rendah" };
+                }
+
                 return (
-                  <tr key={p.id} style={{ borderTop: "1px solid #f1f5f9" }}>
-                    <td className="py-3 fw-semibold text-dark">{p.nama}</td>
-                    <td className="py-3 text-muted">{p.umur} tahun</td>
-                    <td className="py-3 text-muted">
-                      {p.tinggiBadan ? `${p.tinggiBadan} cm` : "-"} / {p.beratBadan ? `${p.beratBadan} kg` : "-"}
-                      {bmi && <span className="badge ms-1 bg-light text-muted" style={{ fontSize: 10 }}>BMI {bmi}</span>}
-                    </td>
+                  <tr key={p.id} style={{ borderBottom: "1px solid #f8fafc" }}>
                     <td className="py-3">
+                      <div className="d-flex align-items-center gap-3">
+                        {/* Initial Avatar */}
+                        <div
+                          className="fw-bold d-flex align-items-center justify-content-center"
+                          style={{
+                            width: 36,
+                            height: 36,
+                            borderRadius: "50%",
+                            background: riskStyle.bg,
+                            color: riskStyle.color,
+                            fontSize: 12
+                          }}
+                        >
+                          {getInitials(p.nama)}
+                        </div>
+                        <span className="fw-bold text-dark">{p.nama}</span>
+                      </div>
+                    </td>
+                    <td className="py-3 text-secondary">{p.umur} tahun</td>
+                    <td className="py-3 text-secondary">
+                      {p.tinggiBadan ? `${p.tinggiBadan} cm` : "-"} / {p.beratBadan ? `${p.beratBadan} kg` : "-"}
+                      {bmi && <span className="badge ms-1.5 bg-light text-secondary" style={{ fontSize: 9.5 }}>BMI {bmi}</span>}
+                    </td>
+                    <td className="py-3 text-secondary">
                       {p.suhu ? `${p.suhu} °C` : <span className="text-muted">-</span>}
                     </td>
-                    <td className="py-3">
+                    <td className="py-3 text-secondary">
                       {p.spo2 ? (
                         <div>
-                          <div>SpO2: {p.spo2}%</div>
-                          <div className="text-muted" style={{ fontSize: 11 }}>
+                          <div className="fw-semibold">SpO2: {p.spo2}%</div>
+                          <div className="text-muted" style={{ fontSize: 10.5 }}>
                             BP: {p.sistolik}/{p.diastolik} mmHg
                           </div>
                         </div>
@@ -489,9 +604,10 @@ function NurseDashboard({ patients, setActivePage, setSelectedId, isMobile, user
                           style={{
                             background: p.meowsScore >= 7 ? "#fde8e8" : p.meowsScore >= 5 ? "#fff8e1" : "#e6f4ea",
                             color: p.meowsScore >= 7 ? "#c53030" : p.meowsScore >= 5 ? "#b7791f" : "#137333",
-                            fontSize: 13,
-                            fontWeight: 600,
-                            padding: "4px 8px"
+                            fontSize: 12,
+                            fontWeight: 700,
+                            padding: "5px 9px",
+                            borderRadius: "6px"
                           }}
                         >
                           {p.meowsScore}
@@ -503,35 +619,36 @@ function NurseDashboard({ patients, setActivePage, setSelectedId, isMobile, user
                     <td className="py-3 text-center">
                       {p.triageRisk ? (
                         <span
-                          className={`badge ${p.triageRisk === "High"
-                            ? "bg-danger text-white"
-                            : p.triageRisk === "Medium"
-                              ? "bg-warning text-dark"
-                              : "bg-success text-white"
-                            }`}
-                          style={{ fontSize: 11, padding: "5px 10px" }}
+                          className="badge text-uppercase fw-bold"
+                          style={{
+                            background: riskStyle.bg,
+                            color: riskStyle.color,
+                            fontSize: 10,
+                            padding: "5px 10px",
+                            borderRadius: "20px"
+                          }}
                         >
-                          {p.triageRisk === "High" ? "Resiko Tinggi (Red)" : p.triageRisk === "Medium" ? "Resiko Sedang (Yellow)" : "Resiko Rendah (Green)"}
+                          {riskStyle.text}
                         </span>
                       ) : (
-                        <span className="badge bg-secondary text-white">Belum Triase</span>
+                        <span className="badge bg-light text-secondary fw-bold" style={{ fontSize: 10, padding: "5px 10px", borderRadius: "20px" }}>Belum Triase</span>
                       )}
                     </td>
                     <td className="py-3">
                       {p.statusDiagnosis === "Sudah Diperiksa" ? (
-                        <span className="badge bg-success-subtle text-success border border-success-subtle fw-semibold text-wrap d-inline-block p-2" style={{ fontSize: 11, maxWidth: 180 }}>
+                        <span className="badge bg-success-subtle text-success border border-success-subtle fw-bold p-2 text-wrap" style={{ fontSize: 10.5, maxWidth: 180 }}>
                           {p.diagnosa || "Sudah Didiagnosa"}
                         </span>
                       ) : (
-                        <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle fw-medium d-inline-block p-2" style={{ fontSize: 11 }}>
+                        <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle fw-semibold p-2" style={{ fontSize: 10.5 }}>
                           Belum Didiagnosa
                         </span>
                       )}
                     </td>
                     <td className="py-3 text-center">
                       <button
-                        className="btn btn-sm btn-outline-teal d-inline-flex align-items-center gap-1"
-                        style={{ borderColor: "#0d9488", color: "#0d9488", fontSize: 12 }}
+                        className="btn btn-sm btn-outline-teal d-inline-flex align-items-center gap-1.5"
+                        style={{ borderColor: "#0d9488", color: "#0d9488", fontSize: 12, borderRadius: "20px", fontWeight: "600", padding: "5px 12px" }}
                         onClick={() => {
                           setSelectedId(p.id);
                           setActivePage("triage");
@@ -713,8 +830,13 @@ function TriageWorkspace({ patients, setPatients, selectedId, setSelectedId }) {
       {/* Left Patient List */}
       <div className="col-12 col-lg-3">
         <div
-          className="rounded-3 shadow-sm p-3"
-          style={{ background: "#fff", border: "1px solid #e2e8f0", minHeight: "60vh" }}
+          className="shadow-sm p-3 bg-white"
+          style={{
+            border: "1px solid rgba(0,0,0,0.01)",
+            borderRadius: "20px",
+            minHeight: "60vh",
+            boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.03)"
+          }}
         >
           <h6 className="fw-semibold mb-3 px-1" style={{ color: "#0f766e", fontSize: 14 }}>
             <i className="bi bi-people-fill me-2" />
@@ -728,11 +850,12 @@ function TriageWorkspace({ patients, setPatients, selectedId, setSelectedId }) {
                 <button
                   key={p.id}
                   onClick={() => handleSelectPatient(p)}
-                  className="btn text-start p-2 rounded-3 border-0 transition-all"
+                  className="btn text-start p-2 border-0 transition-all"
                   style={{
                     background: isActive ? "#ccfbf1" : "#f8fafc",
                     color: isActive ? "#0f766e" : "#334155",
                     cursor: "pointer",
+                    borderRadius: "12px",
                     boxShadow: isActive ? "0 2px 4px rgba(13,148,136,0.12)" : "none",
                   }}
                 >
@@ -767,18 +890,22 @@ function TriageWorkspace({ patients, setPatients, selectedId, setSelectedId }) {
       <div className="col-12 col-lg-9">
         {activePatient ? (
           <div
-            className="rounded-3 shadow-sm p-4"
-            style={{ background: "#fff", border: "1px solid #e2e8f0" }}
+            className="shadow-sm p-4 bg-white"
+            style={{
+              border: "1px solid rgba(0,0,0,0.01)",
+              borderRadius: "20px",
+              boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.03)"
+            }}
           >
             {saveSuccess && (
-              <div className="alert alert-success d-flex align-items-center gap-2 mb-3" style={{ fontSize: 13, borderRadius: 8 }}>
+              <div className="alert alert-success d-flex align-items-center gap-2 mb-3" style={{ fontSize: 13, borderRadius: "12px" }}>
                 <i className="bi bi-check-circle-fill" />
                 Catatan Triage & Fisik untuk <strong>{activePatient.nama}</strong> berhasil disimpan!
               </div>
             )}
 
             {/* Header / Demographics Card */}
-            <div className="p-3 mb-4 rounded-3 d-flex flex-wrap align-items-center justify-content-between gap-3" style={{ background: "#f0fdfa", border: "1.5px dashed #99f6e4" }}>
+            <div className="p-3 mb-4 d-flex flex-wrap align-items-center justify-content-between gap-3" style={{ background: "#f0fdfa", border: "1.5px dashed #99f6e4", borderRadius: "16px" }}>
               <div>
                 <h5 className="fw-bold mb-1" style={{ color: "#0f766e" }}>{activePatient.nama}</h5>
                 <p className="text-muted mb-0" style={{ fontSize: 12 }}>
@@ -786,8 +913,8 @@ function TriageWorkspace({ patients, setPatients, selectedId, setSelectedId }) {
                 </p>
               </div>
               <button
-                className="btn btn-sm btn-teal d-flex align-items-center gap-2"
-                style={{ background: "#0d9488", color: "#fff" }}
+                className="btn btn-sm btn-teal d-flex align-items-center gap-2 text-white"
+                style={{ background: "#0d9488", border: "none", borderRadius: "30px", padding: "6px 16px", fontWeight: "600" }}
                 onClick={() => downloadTriageCSV(activePatient)}
               >
                 <i className="bi bi-download" />
@@ -796,12 +923,12 @@ function TriageWorkspace({ patients, setPatients, selectedId, setSelectedId }) {
             </div>
 
             {/* Hasil Diagnosis Dokter */}
-            <div className="mb-4 p-3 rounded-3" style={{ background: activePatient.statusDiagnosis === "Sudah Diperiksa" ? "#f0fdf4" : "#fffbeb", border: `1.5px solid ${activePatient.statusDiagnosis === "Sudah Diperiksa" ? "#bbf7d0" : "#fef3c7"}` }}>
+            <div className="mb-4 p-3" style={{ background: activePatient.statusDiagnosis === "Sudah Diperiksa" ? "#f0fdf4" : "#fffbeb", border: `1.5px solid ${activePatient.statusDiagnosis === "Sudah Diperiksa" ? "#bbf7d0" : "#fef3c7"}`, borderRadius: "16px" }}>
               <div className="d-flex align-items-center gap-2 mb-2">
                 <i className={`bi ${activePatient.statusDiagnosis === "Sudah Diperiksa" ? "bi-check-circle-fill text-success" : "bi-hourglass-split text-warning"}`} style={{ fontSize: 16 }} />
                 <span className="fw-bold text-dark" style={{ fontSize: 13 }}>Status Diagnosa Dokter</span>
               </div>
-              <div className="p-2 bg-white rounded border shadow-sm" style={{ fontSize: 13, minHeight: 40 }}>
+              <div className="p-2 bg-white border shadow-sm" style={{ fontSize: 13, minHeight: 40, borderRadius: "10px" }}>
                 {activePatient.statusDiagnosis === "Sudah Diperiksa" ? (
                   <div>
                     <div className="fw-semibold text-success mb-1">Diagnosis Utama / ICD-10:</div>
@@ -954,7 +1081,8 @@ function TriageWorkspace({ patients, setPatients, selectedId, setSelectedId }) {
                               background: suplemenO2 === val ? "#0d9488" : "#fff",
                               color: suplemenO2 === val ? "#fff" : "#475569",
                               fontSize: 12,
-                              fontWeight: suplemenO2 === val ? 600 : 400
+                              fontWeight: suplemenO2 === val ? 600 : 400,
+                              borderRadius: "30px"
                             }}
                           >
                             {val === "Tidak" ? "Udara Ruangan" : "Suplemen O2"}
@@ -1030,12 +1158,13 @@ function TriageWorkspace({ patients, setPatients, selectedId, setSelectedId }) {
               {/* Right Column: Triage Score & Clinical Response Panel */}
               <div className="col-12 col-xl-4">
                 <div
-                  className="rounded-3 p-4 h-100 d-flex flex-column justify-content-between shadow-sm"
+                  className="p-4 h-100 d-flex flex-column justify-content-between shadow-sm"
                   style={{
                     background: "#fafbfc",
                     border: "1.5px solid #e2e8f0",
                     position: "sticky",
-                    top: 80
+                    top: 80,
+                    borderRadius: "20px"
                   }}
                 >
                   <div className="text-center mb-4">
@@ -1063,7 +1192,7 @@ function TriageWorkspace({ patients, setPatients, selectedId, setSelectedId }) {
                   </div>
 
                   {/* Clinical Response Guidance */}
-                  <div className="p-3 rounded-3 mb-4 bg-white" style={{ border: "1px solid #e2e8f0", fontSize: 12 }}>
+                  <div className="p-3 mb-4 bg-white" style={{ border: "1px solid #e2e8f0", fontSize: 12, borderRadius: "16px" }}>
                     <div className="fw-bold mb-1 text-dark">Pedoman Respon Klinis:</div>
                     {currentMeows.risk === "High" ? (
                       <ul className="ps-3 mb-0 text-danger fw-semibold">
@@ -1089,8 +1218,8 @@ function TriageWorkspace({ patients, setPatients, selectedId, setSelectedId }) {
                   {/* Actions */}
                   <div className="d-flex flex-column gap-2 mt-auto">
                     <button
-                      className="btn btn-teal w-100 py-2 d-flex align-items-center justify-content-center gap-2 text-white"
-                      style={{ background: "#0d9488", fontWeight: 600, border: "none" }}
+                      className="btn btn-teal w-100 py-2.5 d-flex align-items-center justify-content-center gap-2 text-white"
+                      style={{ background: "#0d9488", fontWeight: 600, border: "none", borderRadius: "15px" }}
                       onClick={handleSave}
                     >
                       <i className="bi bi-floppy-fill" />
@@ -1098,7 +1227,7 @@ function TriageWorkspace({ patients, setPatients, selectedId, setSelectedId }) {
                     </button>
                     <button
                       className="btn btn-outline-secondary w-100 py-2"
-                      style={{ fontSize: 12 }}
+                      style={{ fontSize: 12, borderRadius: "15px" }}
                       onClick={() => handleSelectPatient(activePatient)}
                     >
                       Reset Form
@@ -1161,7 +1290,7 @@ function UserProfilePage({ userName, userEmail, joinedAt, onLogout, onChangePass
       <div className="card border-0 shadow-sm rounded-4 overflow-hidden bg-white">
         <div style={{ height: "100px", background: `linear-gradient(135deg, ${themeColor} 0%, #1e293b 100%)` }} />
         <div className="text-center px-4 pb-4" style={{ marginTop: "-50px" }}>
-          <div 
+          <div
             className="d-inline-flex justify-content-center align-items-center mb-3 bg-white shadow-sm"
             style={{
               width: "100px",
@@ -1170,24 +1299,25 @@ function UserProfilePage({ userName, userEmail, joinedAt, onLogout, onChangePass
               border: "4px solid #fff"
             }}
           >
-            <div 
-              className="d-flex justify-content-center align-items-center rounded-circle"
+            <div
+              className="d-flex justify-content-center align-items-center rounded-circle fw-bold"
               style={{
                 width: "88px",
                 height: "88px",
                 background: badgeBg,
-                color: themeColor
+                color: themeColor,
+                fontSize: "32px"
               }}
             >
-              <i className="bi bi-person-fill" style={{ fontSize: 48 }} />
+              {getInitials(userName)}
             </div>
           </div>
 
           <h4 className="fw-bold mb-1 text-dark" style={{ letterSpacing: "-0.5px" }}>
             {userName || "User"}
           </h4>
-          
-          <span 
+
+          <span
             className="badge mb-4 px-3 py-2 rounded-pill text-uppercase fw-semibold"
             style={{
               background: badgeBg,
@@ -1201,10 +1331,10 @@ function UserProfilePage({ userName, userEmail, joinedAt, onLogout, onChangePass
 
           <div className="bg-light rounded-3 p-4 mb-4 text-start" style={{ border: "1px solid #e2e8f0" }}>
             <h6 className="fw-bold text-dark mb-3" style={{ fontSize: "14px" }}>Informasi Akun</h6>
-            
+
             <div className="mb-3 d-flex align-items-center gap-3">
-              <div 
-                className="d-flex align-items-center justify-content-center rounded-circle" 
+              <div
+                className="d-flex align-items-center justify-content-center rounded-circle"
                 style={{ width: "36px", height: "36px", background: "#fff", border: "1px solid #e2e8f0" }}
               >
                 <i className="bi bi-envelope text-muted" style={{ fontSize: "16px" }} />
@@ -1216,8 +1346,8 @@ function UserProfilePage({ userName, userEmail, joinedAt, onLogout, onChangePass
             </div>
 
             <div className="d-flex align-items-center gap-3">
-              <div 
-                className="d-flex align-items-center justify-content-center rounded-circle" 
+              <div
+                className="d-flex align-items-center justify-content-center rounded-circle"
                 style={{ width: "36px", height: "36px", background: "#fff", border: "1px solid #e2e8f0" }}
               >
                 <i className="bi bi-calendar-event text-muted" style={{ fontSize: "16px" }} />
@@ -1310,9 +1440,9 @@ function UserProfilePage({ userName, userEmail, joinedAt, onLogout, onChangePass
             )}
           </div>
 
-          <button 
-            type="button" 
-            className="btn btn-danger w-100 rounded-pill d-flex align-items-center justify-content-center gap-2 shadow-sm" 
+          <button
+            type="button"
+            className="btn btn-danger w-100 rounded-pill d-flex align-items-center justify-content-center gap-2 shadow-sm"
             onClick={onLogout}
             style={{ fontSize: "14px", fontWeight: "600", padding: "12px 0" }}
           >
@@ -1408,63 +1538,69 @@ export default function NursePanel({ onLogout, userName, userEmail, joinedAt, on
         href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css"
       />
 
-      <div style={{ background: "#f4f7f6", minHeight: "100vh" }}>
+      <div style={{ background: "#f8fafc", minHeight: "100vh" }}>
         {!isMobile && (
-          <SidebarNurse activePage={activePage} setActivePage={setActivePage} userName={userName} />
+          <SidebarNurse activePage={activePage} setActivePage={setActivePage} userName={userName} onLogout={onLogout} />
         )}
 
         {/* Main Content Area */}
-        <div style={{ 
-          marginLeft: isMobile ? 0 : 250,
+        <div style={{
+          marginLeft: isMobile ? 0 : 260,
           paddingBottom: isMobile ? 80 : 0
         }}>
           {/* Desktop Topbar */}
           {!isMobile && (
             <div
-              className="d-flex align-items-center justify-content-between px-4"
+              className="d-flex align-items-center justify-content-between px-4 py-3"
               style={{
-                height: 60,
-                background: "#fff",
-                borderBottom: "1px solid #e2e8f0",
+                background: "rgba(248, 250, 252, 0.85)",
+                backdropFilter: "blur(10px)",
+                WebkitBackdropFilter: "blur(10px)",
                 position: "sticky",
                 top: 0,
                 zIndex: 50,
-                boxShadow: "0 1px 6px rgba(0,0,0,0.04)",
+                borderBottom: "1px solid rgba(226, 232, 240, 0.8)"
               }}
             >
-              <h5 className="mb-0 fw-semibold text-dark" style={{ color: "#0f766e" }}>
-                {current.title}
-              </h5>
+              <div>
+                <h3 className="mb-0 fw-bold text-dark" style={{ letterSpacing: "-0.5px" }}>
+                  {activePage === "profile" ? "Profil Pengguna" : activePage === "dashboard" ? "Dashboard Nurse" : "Triage & Fisik"}
+                </h3>
+                <div className="text-muted" style={{ fontSize: 13, marginTop: 2 }}>
+                  {activePage === "dashboard"
+                    ? "Overview of triage risk levels"
+                    : activePage === "triage"
+                      ? "Workspace for physical examination and triage records"
+                      : "Manage your profile details and change password"}
+                </div>
+              </div>
               <div className="d-flex align-items-center gap-3">
                 <span
-                  className="badge"
-                  style={{ background: "#e6f4ea", color: "#137333", fontSize: 12 }}
+                  className="badge d-flex align-items-center gap-2 px-3 py-2"
+                  style={{
+                    background: "#e6f4ea",
+                    color: "#0f766e",
+                    fontSize: "12.5px",
+                    fontWeight: "600",
+                    borderRadius: "30px",
+                    border: "none"
+                  }}
                 >
-                  <i className="bi bi-calendar3 me-1" />
+                  <i className="bi bi-calendar3" />
                   {new Date().toLocaleDateString("id-ID", {
                     weekday: "long",
-                    year: "numeric",
-                    month: "long",
                     day: "numeric",
+                    month: "long",
+                    year: "numeric",
                   })}
                 </span>
-                {onLogout && (
-                  <button
-                    onClick={onLogout}
-                    className="btn btn-outline-danger btn-sm d-flex align-items-center gap-1 px-3 py-1.5"
-                    style={{ borderRadius: "20px", fontSize: "12px", fontWeight: "600" }}
-                  >
-                    <i className="bi bi-box-arrow-right" />
-                    Keluar
-                  </button>
-                )}
               </div>
             </div>
           )}
 
           {/* Mobile Topbar for other pages */}
           {isMobile && activePage !== "dashboard" && (
-            <div 
+            <div
               className="d-flex align-items-center justify-content-between px-3"
               style={{
                 height: 55,
@@ -1475,8 +1611,8 @@ export default function NursePanel({ onLogout, userName, userEmail, joinedAt, on
                 zIndex: 100
               }}
             >
-              <button 
-                className="btn btn-link p-0 text-dark" 
+              <button
+                className="btn btn-link p-0 text-dark"
                 onClick={() => setActivePage("dashboard")}
                 style={{ fontSize: 20 }}
               >
@@ -1503,28 +1639,28 @@ export default function NursePanel({ onLogout, userName, userEmail, joinedAt, on
 
         {/* Mobile Bottom Navigation Bar */}
         {isMobile && (
-          <div 
+          <div
             className="d-flex justify-content-around align-items-center bg-white border-top position-fixed bottom-0 start-0 end-0"
             style={{ height: 60, zIndex: 1000, boxShadow: "0 -2px 10px rgba(0,0,0,0.05)" }}
           >
-            <button 
-              onClick={() => setActivePage("dashboard")} 
+            <button
+              onClick={() => setActivePage("dashboard")}
               className="btn border-0 d-flex flex-column align-items-center justify-content-center p-0"
               style={{ color: activePage === "dashboard" ? "#0d9488" : "#64748b", flex: 1 }}
             >
               <i className={`bi ${activePage === "dashboard" ? "bi-grid-fill" : "bi-grid"}`} style={{ fontSize: 18 }} />
               <span style={{ fontSize: 9, fontWeight: activePage === "dashboard" ? "600" : "500", marginTop: 2 }}>Dashboard</span>
             </button>
-            <button 
-              onClick={() => setActivePage("triage")} 
+            <button
+              onClick={() => setActivePage("triage")}
               className="btn border-0 d-flex flex-column align-items-center justify-content-center p-0"
               style={{ color: activePage === "triage" ? "#0d9488" : "#64748b", flex: 1 }}
             >
               <i className={`bi ${activePage === "triage" ? "bi-clipboard2-pulse-fill" : "bi-clipboard2-pulse"}`} style={{ fontSize: 18 }} />
               <span style={{ fontSize: 9, fontWeight: activePage === "triage" ? "600" : "500", marginTop: 2 }}>Triage & Fisik</span>
             </button>
-            <button 
-              onClick={() => setActivePage("profile")} 
+            <button
+              onClick={() => setActivePage("profile")}
               className="btn border-0 d-flex flex-column align-items-center justify-content-center p-0"
               style={{ color: activePage === "profile" ? "#0d9488" : "#64748b", flex: 1 }}
             >

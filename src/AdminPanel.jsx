@@ -87,105 +87,171 @@ function StatusBadge({ status }) {
 }
 
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
-function Sidebar({ activePage, setActivePage, userName }) {
+function Sidebar({ activePage, setActivePage, userName, onLogout }) {
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
   const navItems = [
-    { id: "dashboard", icon: "bi-speedometer2", label: "Dashboard" },
-    { id: "pasien", icon: "bi-person-lines-fill", label: "Data Pasien" },
+    { id: "dashboard", icon: "bi-grid-fill", label: "Dashboard" },
+    { id: "pasien", icon: "bi-people-fill", label: "Data Pasien" },
     { id: "tambah", icon: "bi-person-plus-fill", label: "Tambah Pasien" },
   ];
+
   return (
     <div
       className="d-flex flex-column"
       style={{
-        width: 240,
+        width: 260,
         minHeight: "100vh",
-        background: "linear-gradient(160deg, #0f4c81 0%, #1a6fbd 100%)",
+        background: "linear-gradient(180deg, #111c44 0%, #080d21 100%)",
         color: "#fff",
         position: "fixed",
         top: 0,
         left: 0,
         zIndex: 100,
-        boxShadow: "2px 0 12px rgba(0,0,0,0.18)",
+        boxShadow: "4px 0 20px rgba(0,0,0,0.15)",
       }}
     >
       {/* Brand */}
       <div
         className="d-flex align-items-center gap-2 px-4 py-4"
-        style={{ borderBottom: "1px solid rgba(255,255,255,0.15)" }}
+        style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}
       >
         <div
           style={{
-            background: "#fff",
+            background: "#145c9c",
             borderRadius: 10,
             width: 36,
             height: 36,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
+            boxShadow: "0 2px 6px rgba(20, 92, 156, 0.4)"
           }}
         >
-          <i className="bi bi-heart-pulse-fill text-primary" style={{ fontSize: 18 }} />
+          <i className="bi bi-heart-pulse-fill text-white" style={{ fontSize: 18 }} />
         </div>
         <div>
           <div style={{ fontWeight: 700, fontSize: 15, letterSpacing: 0.5 }}>
             Smart-Triage
           </div>
-          <div style={{ fontSize: 11, opacity: 0.7 }}>Admin Panel</div>
+          <div style={{ fontSize: 11, opacity: 0.65 }}>Admin Panel</div>
         </div>
       </div>
 
       {/* Nav */}
-      <nav className="mt-3 flex-grow-1">
-        {navItems.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => setActivePage(item.id)}
-            className="d-flex align-items-center gap-3 w-100 border-0 text-start px-4 py-3"
-            style={{
-              background:
-                activePage === item.id
-                  ? "rgba(255,255,255,0.18)"
-                  : "transparent",
-              color: "#fff",
-              fontWeight: activePage === item.id ? 600 : 400,
-              fontSize: 14,
-              borderLeft:
-                activePage === item.id
-                  ? "3px solid #fff"
-                  : "3px solid transparent",
-              cursor: "pointer",
-              transition: "all 0.15s",
-            }}
-          >
-            <i className={`bi ${item.icon}`} style={{ fontSize: 16 }} />
-            {item.label}
-          </button>
-        ))}
+      <nav className="mt-4 flex-grow-1">
+        {navItems.map((item) => {
+          const isActive = activePage === item.id;
+          return (
+            <button
+              key={item.id}
+              onClick={() => setActivePage(item.id)}
+              className="d-flex align-items-center gap-3 border-0 text-start py-3 px-4 transition-all"
+              style={{
+                width: "100%",
+                background: isActive ? "rgba(255, 255, 255, 0.05)" : "transparent",
+                color: isActive ? "#fff" : "rgba(255, 255, 255, 0.65)",
+                fontWeight: isActive ? 600 : 400,
+                fontSize: 14,
+                cursor: "pointer",
+                borderLeft: isActive ? "4px solid #145c9c" : "4px solid transparent",
+                borderRadius: "0px",
+                margin: "0px"
+              }}
+            >
+              <i 
+                className={`bi ${item.icon}`} 
+                style={{ 
+                  fontSize: 16, 
+                  color: isActive ? "#60a5fa" : "rgba(255, 255, 255, 0.65)",
+                  transition: "color 0.2s"
+                }} 
+              />
+              {item.label}
+            </button>
+          );
+        })}
       </nav>
 
-      {/* User info */}
+      {/* User info & dropdown popover */}
       <div
-        className="px-4 py-3"
-        style={{ borderTop: "1px solid rgba(255,255,255,0.15)", fontSize: 12 }}
+        className="px-3 py-3 position-relative"
+        style={{ borderTop: "1px solid rgba(255,255,255,0.08)", fontSize: 12 }}
       >
-        <div className="d-flex align-items-center gap-2">
-          <div
+        {showProfileMenu && (
+          <div 
             style={{
-              width: 30,
-              height: 30,
-              borderRadius: "50%",
-              background: "rgba(255,255,255,0.25)",
+              position: "absolute",
+              bottom: "65px",
+              left: "12px",
+              right: "12px",
+              background: "#fff",
+              borderRadius: "12px",
+              boxShadow: "0 10px 25px rgba(0,0,0,0.15)",
+              padding: "6px",
               display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
+              flexDirection: "column",
+              zIndex: 1000
             }}
           >
-            <i className="bi bi-person-fill" />
+            <button 
+              onClick={() => {
+                setActivePage("profile");
+                setShowProfileMenu(false);
+              }}
+              className="btn d-flex align-items-center gap-2 text-start px-3 py-2 border-0"
+              style={{ fontSize: "13px", color: "#334155", borderRadius: "8px", fontWeight: "500" }}
+            >
+              <i className="bi bi-person-gear text-muted" style={{ fontSize: "15px" }} />
+              Profile
+            </button>
+            <button 
+              onClick={() => {
+                if (onLogout) onLogout();
+                setShowProfileMenu(false);
+              }}
+              className="btn d-flex align-items-center gap-2 text-start px-3 py-2 border-0"
+              style={{ fontSize: "13px", color: "#dc2626", borderRadius: "8px", fontWeight: "500" }}
+            >
+              <i className="bi bi-box-arrow-right" style={{ fontSize: "15px" }} />
+              Keluar
+            </button>
           </div>
-          <div>
-            <div style={{ fontWeight: 600 }}>Halo! Admin {userName || "User"}</div>
-            <div style={{ opacity: 0.65 }}>Administrator</div>
+        )}
+
+        <div className="d-flex align-items-center justify-content-between">
+          <div className="d-flex align-items-center gap-2" style={{ minWidth: 0 }}>
+            {/* Initials Avatar */}
+            <div
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: "50%",
+                background: "rgba(255,255,255,0.15)",
+                color: "#fff",
+                fontWeight: "600",
+                fontSize: 13,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0
+              }}
+            >
+              {getInitials(userName)}
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontWeight: 600, color: "#fff", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
+                {userName || "Admin RS"}
+              </div>
+              <div style={{ opacity: 0.5, fontSize: 10 }}>Administrator</div>
+            </div>
           </div>
+          <button
+            onClick={() => setShowProfileMenu(!showProfileMenu)}
+            className="btn btn-link p-1 text-white border-0"
+            style={{ opacity: 0.7 }}
+          >
+            <i className="bi bi-three-dots-vertical" style={{ fontSize: 15 }} />
+          </button>
         </div>
       </div>
     </div>
@@ -193,46 +259,63 @@ function Sidebar({ activePage, setActivePage, userName }) {
 }
 
 // ─── Topbar ───────────────────────────────────────────────────────────────────
-function Topbar({ title, onLogout }) {
+function Topbar({ title }) {
+  const getSubtitle = () => {
+    switch (title) {
+      case "Dashboard":
+        return "Overview of clinical operations";
+      case "Data Pasien":
+        return "Manage patient database and medical registry";
+      case "Tambah Pasien":
+        return "Register a new patient into the triage system";
+      case "Profil Pengguna":
+        return "Manage your profile details and change password";
+      default:
+        return "Smart-Triage clinical platform";
+    }
+  };
+
   return (
     <div
-      className="d-flex align-items-center justify-content-between px-4"
+      className="d-flex align-items-center justify-content-between px-4 py-3"
       style={{
-        height: 60,
-        background: "#fff",
-        borderBottom: "1px solid #e5e9f0",
+        background: "rgba(248, 250, 252, 0.85)",
+        backdropFilter: "blur(10px)",
+        WebkitBackdropFilter: "blur(10px)",
         position: "sticky",
         top: 0,
         zIndex: 50,
-        boxShadow: "0 1px 6px rgba(0,0,0,0.06)",
+        borderBottom: "1px solid rgba(226, 232, 240, 0.8)"
       }}
     >
-      <h5 className="mb-0 fw-semibold" style={{ color: "#1e3a5f" }}>
-        {title}
-      </h5>
+      <div>
+        <h3 className="mb-0 fw-bold text-dark" style={{ letterSpacing: "-0.5px" }}>
+          {title}
+        </h3>
+        <div className="text-muted" style={{ fontSize: 13, marginTop: 2 }}>
+          {getSubtitle()}
+        </div>
+      </div>
       <div className="d-flex align-items-center gap-3">
         <span
-          className="badge"
-          style={{ background: "#e8f4fd", color: "#0f4c81", fontSize: 12 }}
+          className="badge d-flex align-items-center gap-2 px-3 py-2"
+          style={{ 
+            background: "rgba(20, 92, 156, 0.08)", 
+            color: "#145c9c", 
+            fontSize: "12.5px", 
+            fontWeight: "600",
+            borderRadius: "30px",
+            border: "none"
+          }}
         >
-          <i className="bi bi-calendar3 me-1" />
+          <i className="bi bi-calendar3" />
           {new Date().toLocaleDateString("id-ID", {
             weekday: "long",
-            year: "numeric",
-            month: "long",
             day: "numeric",
+            month: "long",
+            year: "numeric",
           })}
         </span>
-        {onLogout && (
-          <button
-            onClick={onLogout}
-            className="btn btn-outline-danger btn-sm d-flex align-items-center gap-1 px-3 py-1.5"
-            style={{ borderRadius: "20px", fontSize: "12px", fontWeight: "600" }}
-          >
-            <i className="bi bi-box-arrow-right" />
-            Keluar
-          </button>
-        )}
       </div>
     </div>
   );
@@ -247,7 +330,7 @@ function DashboardPage({ patients, setActivePage, isMobile, userName }) {
 
   if (isMobile) {
     const stats = [
-      { label: "Total Pasien", value: patients.length, icon: "bi-people-fill", color: "#4f46e5", bg: "#eef2ff" },
+      { label: "Total Pasien", value: patients.length, icon: "bi-people-fill", color: "#145c9c", bg: "#e0f2fe" },
       { label: "Pasien BPJS", value: byStatus["BPJS"] || 0, icon: "bi-shield-fill-check", color: "#137333", bg: "#e6f4ea" },
       { label: "Pasien Umum", value: byStatus["Umum"] || 0, icon: "bi-person-fill", color: "#64748b", bg: "#f1f5f9" },
       { label: "Asuransi", value: byStatus["Asuransi"] || 0, icon: "bi-shield-fill", color: "#0284c7", bg: "#e0f2fe" },
@@ -319,7 +402,7 @@ function DashboardPage({ patients, setActivePage, isMobile, userName }) {
             </h5>
             <button
               className="btn btn-link p-0 text-decoration-none fw-semibold"
-              style={{ color: "#4f46e5", fontSize: "13px" }}
+              style={{ color: "#145c9c", fontSize: "13px" }}
               onClick={() => setActivePage("pasien")}
             >
               Lihat Semua
@@ -340,8 +423,8 @@ function DashboardPage({ patients, setActivePage, isMobile, userName }) {
                 badgeColor = "#e6f4ea";
                 badgeTextColor = "#137333";
               } else if (p.statusPasien === "Asuransi") {
-                badgeColor = "#eef2ff";
-                badgeTextColor = "#4f46e5";
+                badgeColor = "#e0f2fe";
+                badgeTextColor = "#145c9c";
               }
 
               return (
@@ -410,7 +493,7 @@ function DashboardPage({ patients, setActivePage, isMobile, userName }) {
             width: "55px",
             height: "55px",
             borderRadius: "50%",
-            background: "#4f46e5",
+            background: "#145c9c",
             color: "#fff",
             zIndex: 999,
             border: "none"
@@ -422,12 +505,12 @@ function DashboardPage({ patients, setActivePage, isMobile, userName }) {
     );
   }
 
-  // Desktop view logic (kept original)
+  // Desktop view logic (updated to match mock)
   const stats = [
-    { label: "Total Pasien", value: patients.length, icon: "bi-people-fill", color: "#0f4c81", bg: "#e8f1fb" },
-    { label: "Pasien BPJS", value: byStatus["BPJS"] || 0, icon: "bi-shield-check", color: "#198754", bg: "#e8f6ef" },
-    { label: "Pasien Umum", value: byStatus["Umum"] || 0, icon: "bi-person-check", color: "#6c757d", bg: "#f2f3f4" },
-    { label: "Pasien Asuransi", value: byStatus["Asuransi"] || 0, icon: "bi-card-checklist", color: "#0dcaf0", bg: "#e0f8fd" },
+    { label: "TOTAL PASIEN", value: patients.length, icon: "bi-people-fill", color: "#145c9c", bg: "#e0f2fe", extraIcon: "bi-graph-up-arrow", extraIconColor: "#93c5fd" },
+    { label: "PASIEN BPJS", value: byStatus["BPJS"] || 0, icon: "bi-shield-check", color: "#10b981", bg: "#ecfdf5", extraIcon: "bi-check-circle", extraIconColor: "#a7f3d0" },
+    { label: "PASIEN UMUM", value: byStatus["Umum"] || 0, icon: "bi-person-fill", color: "#64748b", bg: "#f1f5f9", extraIcon: "bi-person", extraIconColor: "#cbd5e1" },
+    { label: "PASIEN ASURANSI", value: byStatus["Asuransi"] || 0, icon: "bi-file-earmark-text-fill", color: "#0284c7", bg: "#e0f2fe", extraIcon: "bi-shield", extraIconColor: "#bae6fd" },
   ];
 
   return (
@@ -437,14 +520,18 @@ function DashboardPage({ patients, setActivePage, isMobile, userName }) {
         {stats.map((s) => (
           <div key={s.label} className="col-6 col-xl-3">
             <div
-              className="rounded-3 p-3 h-100"
-              style={{ background: "#fff", border: "1px solid #e5e9f0" }}
+              className="card border-0 p-4 h-100 bg-white"
+              style={{ 
+                borderRadius: "20px", 
+                boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.03)",
+                border: "1px solid rgba(0,0,0,0.01)" 
+              }}
             >
-              <div className="d-flex align-items-center gap-3">
+              <div className="d-flex align-items-center justify-content-between mb-3">
                 <div
                   style={{
-                    width: 44,
-                    height: 44,
+                    width: 42,
+                    height: 42,
                     borderRadius: 12,
                     background: s.bg,
                     display: "flex",
@@ -454,14 +541,25 @@ function DashboardPage({ patients, setActivePage, isMobile, userName }) {
                 >
                   <i
                     className={`bi ${s.icon}`}
-                    style={{ fontSize: 20, color: s.color }}
+                    style={{ fontSize: 18, color: s.color }}
                   />
                 </div>
-                <div>
-                  <div style={{ fontSize: 24, fontWeight: 700, color: "#1e3a5f" }}>
-                    {s.value}
-                  </div>
-                  <div style={{ fontSize: 12, color: "#6c757d" }}>{s.label}</div>
+                <i className={`bi ${s.extraIcon}`} style={{ fontSize: 16, color: s.extraIconColor }} />
+              </div>
+              <div>
+                <div className="fw-bold text-dark" style={{ fontSize: 32, lineHeight: 1.2 }}>
+                  {s.value}
+                </div>
+                <div 
+                  className="text-uppercase fw-bold" 
+                  style={{ 
+                    fontSize: 10, 
+                    color: "#94a3b8", 
+                    letterSpacing: "0.8px", 
+                    marginTop: 4 
+                  }}
+                >
+                  {s.label}
                 </div>
               </div>
             </div>
@@ -471,44 +569,95 @@ function DashboardPage({ patients, setActivePage, isMobile, userName }) {
 
       {/* Recent patients */}
       <div
-        className="rounded-3 p-4"
-        style={{ background: "#fff", border: "1px solid #e5e9f0" }}
+        className="card border-0 p-4 bg-white"
+        style={{ 
+          borderRadius: "20px", 
+          boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.03)",
+          border: "1px solid rgba(0,0,0,0.01)" 
+        }}
       >
-        <div className="d-flex align-items-center justify-content-between mb-3">
-          <h6 className="fw-semibold mb-0" style={{ color: "#1e3a5f" }}>
-            Pasien Terbaru
-          </h6>
+        <div className="d-flex align-items-center justify-content-between mb-4">
+          <div>
+            <h5 className="fw-bold mb-1 text-dark" style={{ letterSpacing: "-0.3px" }}>
+              Pasien Terbaru
+            </h5>
+            <div className="text-muted" style={{ fontSize: 13 }}>
+              Daftar registrasi pasien hari ini
+            </div>
+          </div>
           <button
-            className="btn btn-sm"
-            style={{ background: "#e8f1fb", color: "#0f4c81", border: "none", fontSize: 13 }}
+            className="btn btn-sm rounded-pill px-4 py-2 text-white fw-bold d-flex align-items-center gap-1.5"
+            style={{ 
+              background: "#145c9c", 
+              border: "none", 
+              fontSize: 13,
+              boxShadow: "0 4px 12px rgba(20, 92, 156, 0.25)"
+            }}
             onClick={() => setActivePage("pasien")}
           >
-            Lihat semua <i className="bi bi-arrow-right ms-1" />
+            Lihat semua <i className="bi bi-arrow-right" />
           </button>
         </div>
         <div className="table-responsive">
-          <table className="table table-sm mb-0" style={{ fontSize: 13 }}>
-            <thead style={{ background: "#f8fafc" }}>
-              <tr>
-                <th className="fw-semibold text-muted border-0 py-2">Nama</th>
-                <th className="fw-semibold text-muted border-0 py-2">NIK</th>
-                <th className="fw-semibold text-muted border-0 py-2">Status</th>
-                <th className="fw-semibold text-muted border-0 py-2">Tgl Daftar</th>
+          <table className="table table-hover align-middle mb-0" style={{ fontSize: 13.5 }}>
+            <thead>
+              <tr style={{ borderBottom: "1px solid #f1f5f9" }}>
+                <th className="fw-bold text-uppercase pb-3 border-0" style={{ color: "#94a3b8", fontSize: 10, letterSpacing: "0.5px" }}>NAMA</th>
+                <th className="fw-bold text-uppercase pb-3 border-0" style={{ color: "#94a3b8", fontSize: 10, letterSpacing: "0.5px" }}>NIK</th>
+                <th className="fw-bold text-uppercase pb-3 border-0" style={{ color: "#94a3b8", fontSize: 10, letterSpacing: "0.5px" }}>STATUS</th>
+                <th className="fw-bold text-uppercase pb-3 border-0" style={{ color: "#94a3b8", fontSize: 10, letterSpacing: "0.5px" }}>TGL DAFTAR</th>
               </tr>
             </thead>
             <tbody>
-              {patients.slice(0, 5).map((p) => (
-                <tr key={p.id} style={{ borderTop: "1px solid #f0f2f5" }}>
-                  <td className="py-2 fw-medium">{p.nama}</td>
-                  <td className="py-2 text-muted" style={{ fontFamily: "monospace" }}>
-                    {p.nik}
-                  </td>
-                  <td className="py-2">
-                    <StatusBadge status={p.statusPasien} />
-                  </td>
-                  <td className="py-2 text-muted">{p.tglDaftar}</td>
-                </tr>
-              ))}
+              {patients.slice(0, 5).map((p) => {
+                const badgeStyle = p.statusPasien === "BPJS" 
+                  ? { bg: "#e6f4ea", color: "#10b981" } 
+                  : p.statusPasien === "Asuransi" 
+                  ? { bg: "#e0f2fe", color: "#0284c7" } 
+                  : { bg: "#f1f5f9", color: "#64748b" };
+
+                return (
+                  <tr key={p.id} style={{ borderBottom: "1px solid #f8fafc" }}>
+                    <td className="py-3">
+                      <div className="d-flex align-items-center gap-3">
+                        {/* Initial Avatar */}
+                        <div
+                          className="fw-bold d-flex align-items-center justify-content-center"
+                          style={{
+                            width: 36,
+                            height: 36,
+                            borderRadius: "50%",
+                            background: badgeStyle.bg,
+                            color: badgeStyle.color,
+                            fontSize: 12
+                          }}
+                        >
+                          {getInitials(p.nama)}
+                        </div>
+                        <span className="fw-bold text-dark">{p.nama}</span>
+                      </div>
+                    </td>
+                    <td className="py-3 text-secondary" style={{ fontFamily: "monospace", fontSize: 13 }}>
+                      {p.nik}
+                    </td>
+                    <td className="py-3">
+                      <span 
+                        className="badge text-uppercase fw-bold"
+                        style={{
+                          background: badgeStyle.bg,
+                          color: badgeStyle.color,
+                          fontSize: 10,
+                          padding: "5px 10px",
+                          borderRadius: "20px"
+                        }}
+                      >
+                        {p.statusPasien}
+                      </span>
+                    </td>
+                    <td className="py-3 text-secondary">{p.tglDaftar}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -604,11 +753,11 @@ function DataPasienPage({ patients, setPatients }) {
     <div>
       {/* Toolbar */}
       <div
-        className="rounded-3 p-3 mb-3 d-flex flex-wrap gap-2 align-items-center justify-content-between"
-        style={{ background: "#fff", border: "1px solid #e5e9f0" }}
+        className="p-3 mb-3 d-flex flex-wrap gap-2 align-items-center justify-content-between"
+        style={{ background: "#fff", border: "1px solid #e5e9f0", borderRadius: "20px" }}
       >
         <div className="d-flex gap-2 flex-wrap">
-          <div className="input-group" style={{ width: 240 }}>
+          <div className="input-group" style={{ width: 240, borderRadius: "10px", overflow: "hidden" }}>
             <span className="input-group-text border-end-0 bg-white">
               <i className="bi bi-search text-muted" style={{ fontSize: 13 }} />
             </span>
@@ -623,7 +772,7 @@ function DataPasienPage({ patients, setPatients }) {
           </div>
           <select
             className="form-select"
-            style={{ width: 140, fontSize: 13 }}
+            style={{ width: 140, fontSize: 13, borderRadius: "10px" }}
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
           >
@@ -633,8 +782,8 @@ function DataPasienPage({ patients, setPatients }) {
           </select>
         </div>
         <button
-          className="btn btn-sm d-flex align-items-center gap-2"
-          style={{ background: "#0f4c81", color: "#fff", fontSize: 13 }}
+          className="btn btn-sm d-flex align-items-center gap-2 text-white"
+          style={{ background: "#145c9c", border: "none", borderRadius: "30px", padding: "6px 16px", fontWeight: "600", fontSize: 13 }}
           onClick={() => downloadCSV(filtered)}
         >
           <i className="bi bi-download" />
@@ -644,8 +793,13 @@ function DataPasienPage({ patients, setPatients }) {
 
       {/* Table */}
       <div
-        className="rounded-3"
-        style={{ background: "#fff", border: "1px solid #e5e9f0", overflow: "hidden" }}
+        style={{ 
+          background: "#fff", 
+          border: "1px solid #e5e9f0", 
+          overflow: "hidden", 
+          borderRadius: "20px",
+          boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.03)"
+        }}
       >
         <div className="table-responsive">
           <table className="table mb-0" style={{ fontSize: 13 }}>
@@ -706,7 +860,16 @@ function DataPasienPage({ patients, setPatients }) {
                     <td className="py-3" style={{ whiteSpace: "nowrap" }}>
                       <button
                         className="btn btn-sm btn-outline-primary me-2"
-                        style={{ fontSize: 12 }}
+                        style={{ 
+                          fontSize: 12, 
+                          borderRadius: "30px", 
+                          width: "30px", 
+                          height: "30px", 
+                          padding: 0,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center"
+                        }}
                         onClick={() => {
                           setEditPatient(p);
                           setEditErrors({});
@@ -717,7 +880,16 @@ function DataPasienPage({ patients, setPatients }) {
                       </button>
                       <button
                         className="btn btn-sm btn-outline-danger"
-                        style={{ fontSize: 12 }}
+                        style={{ 
+                          fontSize: 12, 
+                          borderRadius: "30px", 
+                          width: "30px", 
+                          height: "30px", 
+                          padding: 0,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center"
+                        }}
                         onClick={() => setDeleteId(p.id)}
                       >
                         <i className="bi bi-trash3" />
@@ -748,8 +920,8 @@ function DataPasienPage({ patients, setPatients }) {
           style={{ background: "rgba(0,0,0,0.4)", zIndex: 999 }}
         >
           <div
-            className="bg-white rounded-3 p-4"
-            style={{ width: 340, boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}
+            className="bg-white p-4"
+            style={{ width: 340, boxShadow: "0 8px 32px rgba(0,0,0,0.18)", borderRadius: "20px" }}
           >
             <div className="text-center mb-3">
               <div
@@ -774,12 +946,14 @@ function DataPasienPage({ patients, setPatients }) {
             <div className="d-flex gap-2 mt-3">
               <button
                 className="btn btn-outline-secondary flex-fill"
+                style={{ borderRadius: "30px", fontSize: 13, padding: "8px 16px" }}
                 onClick={() => setDeleteId(null)}
               >
                 Batal
               </button>
               <button
                 className="btn btn-danger flex-fill"
+                style={{ borderRadius: "30px", fontSize: 13, padding: "8px 16px", border: "none" }}
                 onClick={() => handleDelete(deleteId)}
               >
                 Ya, Hapus
@@ -1013,7 +1187,7 @@ function DataPasienPage({ patients, setPatients }) {
                     className="btn btn-primary rounded-pill px-4 d-flex align-items-center gap-2"
                     onClick={handleSaveEdit}
                     disabled={isSavingEdit}
-                    style={{ background: "#0f4c81", borderColor: "#0f4c81", fontSize: 13.5, fontWeight: "600" }}
+                    style={{ background: "#145c9c", borderColor: "#145c9c", fontSize: 13.5, fontWeight: "600" }}
                   >
                     {isSavingEdit ? (
                       <>
@@ -1170,8 +1344,13 @@ function TambahPasienPage({ setPatients, setActivePage }) {
       )}
 
       <div
-        className="rounded-3 p-4"
-        style={{ background: "#fff", border: "1px solid #e5e9f0" }}
+        className="p-4"
+        style={{ 
+          background: "#fff", 
+          border: "1px solid #e5e9f0", 
+          borderRadius: "20px",
+          boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.03)"
+        }}
       >
         <h6 className="fw-semibold mb-4" style={{ color: "#1e3a5f" }}>
           <i className="bi bi-person-plus me-2" />
@@ -1182,13 +1361,13 @@ function TambahPasienPage({ setPatients, setActivePage }) {
         <div className="mb-4">
           <div
             className="d-flex align-items-center gap-2 mb-3"
-            style={{ color: "#0f4c81" }}
+            style={{ color: "#145c9c" }}
           >
             <div
               style={{
                 width: 4,
                 height: 18,
-                background: "#0f4c81",
+                background: "#145c9c",
                 borderRadius: 2,
               }}
             />
@@ -1284,13 +1463,13 @@ function TambahPasienPage({ setPatients, setActivePage }) {
         <div className="mb-4">
           <div
             className="d-flex align-items-center gap-2 mb-3"
-            style={{ color: "#0f4c81" }}
+            style={{ color: "#145c9c" }}
           >
             <div
               style={{
                 width: 4,
                 height: 18,
-                background: "#0f4c81",
+                background: "#145c9c",
                 borderRadius: 2,
               }}
             />
@@ -1328,13 +1507,13 @@ function TambahPasienPage({ setPatients, setActivePage }) {
         <div className="mb-4">
           <div
             className="d-flex align-items-center gap-2 mb-3"
-            style={{ color: "#0f4c81" }}
+            style={{ color: "#145c9c" }}
           >
             <div
               style={{
                 width: 4,
                 height: 18,
-                background: "#0f4c81",
+                background: "#145c9c",
                 borderRadius: 2,
               }}
             />
@@ -1359,13 +1538,13 @@ function TambahPasienPage({ setPatients, setActivePage }) {
         <div className="mb-4">
           <div
             className="d-flex align-items-center gap-2 mb-3"
-            style={{ color: "#0f4c81" }}
+            style={{ color: "#145c9c" }}
           >
             <div
               style={{
                 width: 4,
                 height: 18,
-                background: "#0f4c81",
+                background: "#145c9c",
                 borderRadius: 2,
               }}
             />
@@ -1392,10 +1571,12 @@ function TambahPasienPage({ setPatients, setActivePage }) {
                     style={{
                       fontSize: 12,
                       border: "1.5px solid",
-                      borderColor: form.statusPasien === s ? "#0f4c81" : "#dee2e6",
-                      background: form.statusPasien === s ? "#0f4c81" : "#fff",
+                      borderColor: form.statusPasien === s ? "#145c9c" : "#dee2e6",
+                      background: form.statusPasien === s ? "#145c9c" : "#fff",
                       color: form.statusPasien === s ? "#fff" : "#374151",
                       fontWeight: form.statusPasien === s ? 600 : 400,
+                      borderRadius: "30px",
+                      padding: "5px 15px"
                     }}
                   >
                     {s}
@@ -1418,7 +1599,7 @@ function TambahPasienPage({ setPatients, setActivePage }) {
         >
           <button
             className="btn btn-outline-secondary"
-            style={{ fontSize: 13 }}
+            style={{ fontSize: 13, borderRadius: "30px", padding: "8px 20px" }}
             onClick={() => {
               setForm(EMPTY_FORM);
               setErrors({});
@@ -1428,13 +1609,14 @@ function TambahPasienPage({ setPatients, setActivePage }) {
             Reset
           </button>
           <button
-            className="btn"
+            className="btn text-white"
             style={{
-              background: "#0f4c81",
-              color: "#fff",
+              background: "#145c9c",
               fontSize: 13,
-              paddingLeft: 24,
-              paddingRight: 24,
+              padding: "8px 24px",
+              borderRadius: "30px",
+              border: "none",
+              fontWeight: "600"
             }}
             onClick={handleSubmit}
           >
@@ -1499,15 +1681,16 @@ function UserProfilePage({ userName, userEmail, joinedAt, onLogout, onChangePass
             }}
           >
             <div 
-              className="d-flex justify-content-center align-items-center rounded-circle"
+              className="d-flex justify-content-center align-items-center rounded-circle fw-bold"
               style={{
                 width: "88px",
                 height: "88px",
                 background: badgeBg,
-                color: themeColor
+                color: themeColor,
+                fontSize: "32px"
               }}
             >
-              <i className="bi bi-person-fill" style={{ fontSize: 48 }} />
+              {getInitials(userName)}
             </div>
           </div>
 
@@ -1694,7 +1877,7 @@ export default function AdminPanel({ onLogout, userName, userEmail, joinedAt, on
           onLogout={onLogout}
           onChangePassword={onChangePassword}
           role="Admin"
-          themeColor="#0f4c81"
+          themeColor="#145c9c"
           badgeBg="#e0f2fe"
           badgeColor="#0369a1"
         />
@@ -1716,17 +1899,17 @@ export default function AdminPanel({ onLogout, userName, userEmail, joinedAt, on
         href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css"
       />
 
-      <div style={{ background: "#f4f7fb", minHeight: "100vh" }}>
+      <div style={{ background: "#f8fafc", minHeight: "100vh" }}>
         {!isMobile && (
-          <Sidebar activePage={activePage} setActivePage={setActivePage} userName={userName} />
+          <Sidebar activePage={activePage} setActivePage={setActivePage} userName={userName} onLogout={onLogout} />
         )}
 
         {/* Main content area */}
         <div style={{ 
-          marginLeft: isMobile ? 0 : 240, 
+          marginLeft: isMobile ? 0 : 260, 
           paddingBottom: isMobile ? 80 : 0 
         }}>
-          {!isMobile && <Topbar title={current.title} onLogout={onLogout} />}
+          {!isMobile && <Topbar title={current.title} />}
           
           {/* Mobile Topbar for other pages */}
           {isMobile && activePage !== "dashboard" && (
@@ -1799,7 +1982,7 @@ export default function AdminPanel({ onLogout, userName, userEmail, joinedAt, on
             <button 
               onClick={() => setActivePage("profile")} 
               className="btn border-0 d-flex flex-column align-items-center justify-content-center p-0"
-              style={{ color: activePage === "profile" ? "#0f4c81" : "#64748b", flex: 1 }}
+              style={{ color: activePage === "profile" ? "#145c9c" : "#64748b", flex: 1 }}
             >
               <i className="bi bi-person-circle" style={{ fontSize: 18 }} />
               <span style={{ fontSize: 9, fontWeight: activePage === "profile" ? "600" : "500", marginTop: 2 }}>{userName ? userName.slice(0, 10) : "Admin"}</span>
