@@ -80,12 +80,6 @@ Initialize the database schemas by importing the SQL structure from the [`schema
 ```bash
 npm run dev
 ```
-Open your browser and navigate to `http://localhost:5173`.
+Open your browser and navigate to your localhost link.
 
 ---
-
-## 🔒 Default Test Accounts
-
-For testing the portals, you can log in using:
-* **Email**: `mhmdzahids@gmail.com`
-* **Password**: `test123`
