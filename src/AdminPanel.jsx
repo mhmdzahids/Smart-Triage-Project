@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { fetchActiveVisits, insertNewVisit, deleteVisit, updatePatientIdentity } from "./supabaseHelpers";
+import { translations } from "./translations";
 
 
 
@@ -17,6 +18,41 @@ const EMPTY_FORM = {
   noHpKontak: "",
   statusPasien: "",
 };
+
+// Helper: Animated counter component
+function AnimatedCounter({ value, duration = 800 }) {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    let start = 0;
+    const end = parseInt(value, 10);
+    if (isNaN(end) || end <= 0) {
+      setCount(value);
+      return;
+    }
+
+    const totalSteps = 40;
+    const stepDuration = duration / totalSteps;
+    let step = 0;
+
+    const timer = setInterval(() => {
+      step++;
+      const progress = step / totalSteps;
+      const currentVal = Math.round(start + progress * (end - start));
+      setCount(currentVal);
+
+      if (step >= totalSteps) {
+        clearInterval(timer);
+        setCount(end);
+      }
+    }, stepDuration);
+
+    return () => clearInterval(timer);
+  }, [value, duration]);
+
+  return <>{count}</>;
+}
+
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function calcUmur(tglLahir) {
@@ -87,12 +123,12 @@ function StatusBadge({ status }) {
 }
 
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
-function Sidebar({ activePage, setActivePage, userName, onLogout }) {
+function Sidebar({ activePage, setActivePage, userName, onLogout, lang }) {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const navItems = [
-    { id: "dashboard", icon: "bi-grid-fill", label: "Dashboard" },
-    { id: "pasien", icon: "bi-people-fill", label: "Data Pasien" },
-    { id: "tambah", icon: "bi-person-plus-fill", label: "Tambah Pasien" },
+    { id: "dashboard", icon: "bi-grid-fill", label: translations[lang].dashboard },
+    { id: "pasien", icon: "bi-people-fill", label: translations[lang].patientData },
+    { id: "tambah", icon: "bi-person-plus-fill", label: translations[lang].addPatient },
   ];
 
   return (
@@ -259,20 +295,28 @@ function Sidebar({ activePage, setActivePage, userName, onLogout }) {
 }
 
 // ─── Topbar ───────────────────────────────────────────────────────────────────
-function Topbar({ title }) {
+function Topbar({ title, lang, onToggleLanguage }) {
   const getSubtitle = () => {
     switch (title) {
       case "Dashboard":
-        return "Overview of clinical operations";
+        return translations[lang].subDashboard;
       case "Data Pasien":
-        return "Manage patient database and medical registry";
+        return translations[lang].subPatientData;
       case "Tambah Pasien":
-        return "Register a new patient into the triage system";
+        return translations[lang].subAddPatient;
       case "Profil Pengguna":
-        return "Manage your profile details and change password";
+        return translations[lang].subUserProfile;
       default:
-        return "Smart-Triage clinical platform";
+        return translations[lang].subDefault;
     }
+  };
+
+  const displayTitle = () => {
+    if (title === "Dashboard") return translations[lang].dashboard;
+    if (title === "Data Pasien") return translations[lang].patientData;
+    if (title === "Tambah Pasien") return translations[lang].addPatient;
+    if (title === "Profil Pengguna") return translations[lang].userProfile;
+    return title;
   };
 
   return (
@@ -290,13 +334,64 @@ function Topbar({ title }) {
     >
       <div>
         <h3 className="mb-0 fw-bold text-dark" style={{ letterSpacing: "-0.5px" }}>
-          {title}
+          {displayTitle()}
         </h3>
         <div className="text-muted" style={{ fontSize: 13, marginTop: 2 }}>
           {getSubtitle()}
         </div>
       </div>
       <div className="d-flex align-items-center gap-3">
+        {/* Language Switcher */}
+        <div className="d-flex align-items-center bg-light p-1 rounded-pill me-2" style={{ border: "1px solid #e2e8f0" }}>
+          <button
+            onClick={() => onToggleLanguage("id")}
+            className={`btn btn-sm rounded-circle p-0 d-flex align-items-center justify-content-center ${lang === "id" ? "bg-white border" : ""}`}
+            style={{ 
+              width: "32px", 
+              height: "32px", 
+              border: lang === "id" ? "1px solid rgba(0,0,0,0.08)" : "none", 
+              boxShadow: lang === "id" ? "0 3px 8px rgba(0,0,0,0.12)" : "none",
+              transition: "all 0.2s" 
+            }}
+            title="Bahasa Indonesia"
+          >
+            <img 
+              src="https://flagcdn.com/w40/id.png" 
+              alt="Indonesia Flag" 
+              style={{ 
+                width: "20px", 
+                height: "14px", 
+                borderRadius: "2px", 
+                objectFit: "cover",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.2)"
+              }} 
+            />
+          </button>
+          <button
+            onClick={() => onToggleLanguage("en")}
+            className={`btn btn-sm rounded-circle p-0 d-flex align-items-center justify-content-center ${lang === "en" ? "bg-white border" : ""}`}
+            style={{ 
+              width: "32px", 
+              height: "32px", 
+              border: lang === "en" ? "1px solid rgba(0,0,0,0.08)" : "none", 
+              boxShadow: lang === "en" ? "0 3px 8px rgba(0,0,0,0.12)" : "none",
+              transition: "all 0.2s" 
+            }}
+            title="English"
+          >
+            <img 
+              src="https://flagcdn.com/w40/gb.png" 
+              alt="English Flag" 
+              style={{ 
+                width: "20px", 
+                height: "14px", 
+                borderRadius: "2px", 
+                objectFit: "cover",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.2)"
+              }} 
+            />
+          </button>
+        </div>
         <span
           className="badge d-flex align-items-center gap-2 px-3 py-2"
           style={{ 
@@ -309,7 +404,7 @@ function Topbar({ title }) {
           }}
         >
           <i className="bi bi-calendar3" />
-          {new Date().toLocaleDateString("id-ID", {
+          {new Date().toLocaleDateString(lang === "id" ? "id-ID" : "en-US", {
             weekday: "long",
             day: "numeric",
             month: "long",
@@ -322,18 +417,20 @@ function Topbar({ title }) {
 }
 
 // ─── Page: Dashboard ──────────────────────────────────────────────────────────
-function DashboardPage({ patients, setActivePage, isMobile, userName }) {
+function DashboardPage({ patients, setActivePage, isMobile, userName, lang }) {
   const byStatus = patients.reduce((acc, p) => {
     acc[p.statusPasien] = (acc[p.statusPasien] || 0) + 1;
     return acc;
   }, {});
 
+  const t = translations[lang];
+
   if (isMobile) {
     const stats = [
-      { label: "Total Pasien", value: patients.length, icon: "bi-people-fill", color: "#145c9c", bg: "#e0f2fe" },
-      { label: "Pasien BPJS", value: byStatus["BPJS"] || 0, icon: "bi-shield-fill-check", color: "#137333", bg: "#e6f4ea" },
-      { label: "Pasien Umum", value: byStatus["Umum"] || 0, icon: "bi-person-fill", color: "#64748b", bg: "#f1f5f9" },
-      { label: "Asuransi", value: byStatus["Asuransi"] || 0, icon: "bi-shield-fill", color: "#0284c7", bg: "#e0f2fe" },
+      { label: t.totalPatients, value: patients.length, icon: "bi-people-fill", color: "#145c9c", bg: "#e0f2fe" },
+      { label: t.bpjsPatients, value: byStatus["BPJS"] || 0, icon: "bi-shield-fill-check", color: "#137333", bg: "#e6f4ea" },
+      { label: t.umumPatients, value: byStatus["Umum"] || 0, icon: "bi-person-fill", color: "#64748b", bg: "#f1f5f9" },
+      { label: t.asuransiPatients, value: byStatus["Asuransi"] || 0, icon: "bi-shield-fill", color: "#0284c7", bg: "#e0f2fe" },
     ];
 
     // Get recent 3 patients
@@ -346,7 +443,7 @@ function DashboardPage({ patients, setActivePage, isMobile, userName }) {
           <h3 className="fw-bold mb-1" style={{ color: "#1e293b", fontSize: "24px" }}>Halo, {userName || "Admin RS"}</h3>
           <div className="text-muted d-flex align-items-center gap-1.5" style={{ fontSize: "13px", fontWeight: "500" }}>
             <i className="bi bi-calendar3 text-secondary me-1" />
-            {new Date().toLocaleDateString("id-ID", {
+            {new Date().toLocaleDateString(lang === "id" ? "id-ID" : "en-US", {
               weekday: "long",
               day: "numeric",
               month: "long",
@@ -386,7 +483,7 @@ function DashboardPage({ patients, setActivePage, isMobile, userName }) {
                     {s.label}
                   </div>
                   <div className="fw-bold" style={{ fontSize: 24, color: "#1e293b", lineHeight: 1.1 }}>
-                    {s.value}
+                    <AnimatedCounter value={s.value} />
                   </div>
                 </div>
               </div>
@@ -398,14 +495,14 @@ function DashboardPage({ patients, setActivePage, isMobile, userName }) {
         <div className="mb-4">
           <div className="d-flex align-items-center justify-content-between mb-3 px-1">
             <h5 className="fw-bold mb-0" style={{ color: "#1e293b", fontSize: "16px" }}>
-              Pasien Terbaru
+              {t.patientName}
             </h5>
             <button
               className="btn btn-link p-0 text-decoration-none fw-semibold"
               style={{ color: "#145c9c", fontSize: "13px" }}
               onClick={() => setActivePage("pasien")}
             >
-              Lihat Semua
+              {t.viewAll}
             </button>
           </div>
 
@@ -507,10 +604,10 @@ function DashboardPage({ patients, setActivePage, isMobile, userName }) {
 
   // Desktop view logic (updated to match mock)
   const stats = [
-    { label: "TOTAL PASIEN", value: patients.length, icon: "bi-people-fill", color: "#145c9c", bg: "#e0f2fe", extraIcon: "bi-graph-up-arrow", extraIconColor: "#93c5fd" },
-    { label: "PASIEN BPJS", value: byStatus["BPJS"] || 0, icon: "bi-shield-check", color: "#10b981", bg: "#ecfdf5", extraIcon: "bi-check-circle", extraIconColor: "#a7f3d0" },
-    { label: "PASIEN UMUM", value: byStatus["Umum"] || 0, icon: "bi-person-fill", color: "#64748b", bg: "#f1f5f9", extraIcon: "bi-person", extraIconColor: "#cbd5e1" },
-    { label: "PASIEN ASURANSI", value: byStatus["Asuransi"] || 0, icon: "bi-file-earmark-text-fill", color: "#0284c7", bg: "#e0f2fe", extraIcon: "bi-shield", extraIconColor: "#bae6fd" },
+    { label: t.totalPatients.toUpperCase(), value: patients.length, icon: "bi-people-fill", color: "#145c9c", bg: "#e0f2fe", extraIcon: "bi-graph-up-arrow", extraIconColor: "#93c5fd" },
+    { label: t.bpjsPatients.toUpperCase(), value: byStatus["BPJS"] || 0, icon: "bi-shield-check", color: "#10b981", bg: "#ecfdf5", extraIcon: "bi-check-circle", extraIconColor: "#a7f3d0" },
+    { label: t.umumPatients.toUpperCase(), value: byStatus["Umum"] || 0, icon: "bi-person-fill", color: "#64748b", bg: "#f1f5f9", extraIcon: "bi-person", extraIconColor: "#cbd5e1" },
+    { label: t.asuransiPatients.toUpperCase(), value: byStatus["Asuransi"] || 0, icon: "bi-file-earmark-text-fill", color: "#0284c7", bg: "#e0f2fe", extraIcon: "bi-shield", extraIconColor: "#bae6fd" },
   ];
 
   return (
@@ -548,7 +645,7 @@ function DashboardPage({ patients, setActivePage, isMobile, userName }) {
               </div>
               <div>
                 <div className="fw-bold text-dark" style={{ fontSize: 32, lineHeight: 1.2 }}>
-                  {s.value}
+                  <AnimatedCounter value={s.value} />
                 </div>
                 <div 
                   className="text-uppercase fw-bold" 
@@ -579,10 +676,10 @@ function DashboardPage({ patients, setActivePage, isMobile, userName }) {
         <div className="d-flex align-items-center justify-content-between mb-4">
           <div>
             <h5 className="fw-bold mb-1 text-dark" style={{ letterSpacing: "-0.3px" }}>
-              Pasien Terbaru
+              {t.recentPatients}
             </h5>
             <div className="text-muted" style={{ fontSize: 13 }}>
-              Daftar registrasi pasien hari ini
+              {t.subRecentPatients}
             </div>
           </div>
           <button
@@ -595,17 +692,17 @@ function DashboardPage({ patients, setActivePage, isMobile, userName }) {
             }}
             onClick={() => setActivePage("pasien")}
           >
-            Lihat semua <i className="bi bi-arrow-right" />
+            {t.viewAll} <i className="bi bi-arrow-right" />
           </button>
         </div>
         <div className="table-responsive">
           <table className="table table-hover align-middle mb-0" style={{ fontSize: 13.5 }}>
             <thead>
               <tr style={{ borderBottom: "1px solid #f1f5f9" }}>
-                <th className="fw-bold text-uppercase pb-3 border-0" style={{ color: "#94a3b8", fontSize: 10, letterSpacing: "0.5px" }}>NAMA</th>
+                <th className="fw-bold text-uppercase pb-3 border-0" style={{ color: "#94a3b8", fontSize: 10, letterSpacing: "0.5px" }}>{t.tableNama}</th>
                 <th className="fw-bold text-uppercase pb-3 border-0" style={{ color: "#94a3b8", fontSize: 10, letterSpacing: "0.5px" }}>NIK</th>
-                <th className="fw-bold text-uppercase pb-3 border-0" style={{ color: "#94a3b8", fontSize: 10, letterSpacing: "0.5px" }}>STATUS</th>
-                <th className="fw-bold text-uppercase pb-3 border-0" style={{ color: "#94a3b8", fontSize: 10, letterSpacing: "0.5px" }}>TGL DAFTAR</th>
+                <th className="fw-bold text-uppercase pb-3 border-0" style={{ color: "#94a3b8", fontSize: 10, letterSpacing: "0.5px" }}>{t.tableStatus}</th>
+                <th className="fw-bold text-uppercase pb-3 border-0" style={{ color: "#94a3b8", fontSize: 10, letterSpacing: "0.5px" }}>{t.tableDate}</th>
               </tr>
             </thead>
             <tbody>
@@ -667,7 +764,8 @@ function DashboardPage({ patients, setActivePage, isMobile, userName }) {
 }
 
 // ─── Page: Data Pasien ────────────────────────────────────────────────────────
-function DataPasienPage({ patients, setPatients }) {
+function DataPasienPage({ patients, setPatients, lang }) {
+  const t = translations[lang];
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("Semua");
   const [deleteId, setDeleteId] = useState(null);
@@ -684,7 +782,7 @@ function DataPasienPage({ patients, setPatients }) {
       p.nama.toLowerCase().includes(q) ||
       p.nik.includes(q) ||
       p.noBpjs.includes(q);
-    const matchS = filterStatus === "Semua" || p.statusPasien === filterStatus;
+    const matchS = filterStatus === "Semua" || filterStatus === "All" || p.statusPasien === filterStatus;
     return matchQ && matchS;
   });
 
@@ -764,7 +862,7 @@ function DataPasienPage({ patients, setPatients }) {
             <input
               type="text"
               className="form-control border-start-0 ps-0"
-              placeholder="Cari nama, NIK, BPJS..."
+              placeholder={t.searchPlaceholder}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               style={{ fontSize: 13 }}
@@ -776,7 +874,7 @@ function DataPasienPage({ patients, setPatients }) {
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
           >
-            {["Semua", "BPJS", "Umum", "Asuransi", "Perusahaan"].map((s) => (
+            {[t.all, "BPJS", "Umum", "Asuransi", "Perusahaan"].map((s) => (
               <option key={s}>{s}</option>
             ))}
           </select>
@@ -787,7 +885,7 @@ function DataPasienPage({ patients, setPatients }) {
           onClick={() => downloadCSV(filtered)}
         >
           <i className="bi bi-download" />
-          Download CSV
+          {t.downloadCsv}
         </button>
       </div>
 
@@ -805,7 +903,7 @@ function DataPasienPage({ patients, setPatients }) {
           <table className="table mb-0" style={{ fontSize: 13 }}>
             <thead style={{ background: "#f8fafc" }}>
               <tr>
-                {["#","Nama Lengkap","NIK","No BPJS","Tgl Lahir","Umur","Jenis Kelamin","No HP","Kontak Darurat","Status","Aksi"].map(
+                {["#", t.fullName, "NIK", t.bpjsNum, t.dob, t.age, t.gender, t.noHp, t.emergencyContact, t.status, t.actionLabel].map(
                   (h) => (
                     <th
                       key={h}
@@ -823,7 +921,7 @@ function DataPasienPage({ patients, setPatients }) {
                 <tr>
                   <td colSpan={11} className="text-center py-5 text-muted">
                     <i className="bi bi-inbox d-block mb-2" style={{ fontSize: 28 }} />
-                    Tidak ada data pasien
+                    {t.noData}
                   </td>
                 </tr>
               ) : (
@@ -844,7 +942,7 @@ function DataPasienPage({ patients, setPatients }) {
                       {p.noBpjs || <span className="text-muted">-</span>}
                     </td>
                     <td className="py-3">{p.tglLahir}</td>
-                    <td className="py-3">{p.umur} thn</td>
+                    <td className="py-3">{p.umur} {t.yearsOld}</td>
                     <td className="py-3">{p.jenisKelamin}</td>
                     <td className="py-3">{p.noHp}</td>
                     <td className="py-3">
@@ -1213,7 +1311,8 @@ function DataPasienPage({ patients, setPatients }) {
 }
 
 // ─── Page: Tambah Pasien ──────────────────────────────────────────────────────
-function TambahPasienPage({ setPatients, setActivePage }) {
+function TambahPasienPage({ setPatients, setActivePage, lang }) {
+  const t = translations[lang];
   const [form, setForm] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
   const [success, setSuccess] = useState(false);
@@ -1234,11 +1333,11 @@ function TambahPasienPage({ setPatients, setActivePage }) {
     const required = ["nama", "nik", "tglLahir", "jenisKelamin", "alamat", "noHp", "namaKontak", "hubKontak", "noHpKontak", "statusPasien"];
     const newErrors = {};
     required.forEach((f) => {
-      if (!form[f] || !form[f].trim()) newErrors[f] = "Wajib diisi";
+      if (!form[f] || !form[f].trim()) newErrors[f] = t.validationRequired;
     });
-    if (form.nik && form.nik.length !== 16) newErrors.nik = "NIK harus 16 digit";
+    if (form.nik && form.nik.length !== 16) newErrors.nik = t.validationNik;
     if (form.noBpjs && form.noBpjs.length !== 13)
-      newErrors.noBpjs = "No BPJS harus 13 digit";
+      newErrors.noBpjs = t.validationBpjs;
     return newErrors;
   };
 
@@ -1268,10 +1367,10 @@ function TambahPasienPage({ setPatients, setActivePage }) {
       setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
       if (err.message.includes('23505') || err.message.includes('unique constraint')) {
-        setErrors((prev) => ({ ...prev, nik: "NIK sudah terdaftar" }));
+        setErrors((prev) => ({ ...prev, nik: t.validationNikRegistered }));
       } else {
         console.error("Error inserting patient visit:", err.message);
-        setGeneralError("Gagal menyimpan data pasien: " + err.message);
+        setGeneralError(t.validationSaveFailed + err.message);
         setTimeout(() => setGeneralError(""), 6000);
       }
     }
@@ -1316,13 +1415,13 @@ function TambahPasienPage({ setPatients, setActivePage }) {
           }}
         >
           <i className="bi bi-check-circle-fill" />
-          Data pasien berhasil disimpan! Lihat di halaman{" "}
+          {t.patientSavedSuccess}{" "}
           <button
             className="btn btn-link p-0"
             style={{ color: "#166534", fontSize: 13 }}
             onClick={() => setActivePage("pasien")}
           >
-            Data Pasien
+            {t.patientData}
           </button>
         </div>
       )}
@@ -1354,7 +1453,7 @@ function TambahPasienPage({ setPatients, setActivePage }) {
       >
         <h6 className="fw-semibold mb-4" style={{ color: "#1e3a5f" }}>
           <i className="bi bi-person-plus me-2" />
-          Formulir Identitas Pasien
+          {t.patientIdentityForm}
         </h6>
 
         {/* Section: Data Utama */}
@@ -1372,21 +1471,21 @@ function TambahPasienPage({ setPatients, setActivePage }) {
               }}
             />
             <span className="fw-semibold" style={{ fontSize: 13 }}>
-              Data Identitas
+              {t.identityData}
             </span>
           </div>
           <div className="row g-3">
             <div className="col-12 col-md-6">
-              {renderField("Nama Lengkap", "nama", "text", "Contoh: Siti Rahayu", true)}
+              {renderField(t.fullName, "nama", "text", lang === "id" ? "Contoh: Siti Rahayu" : "Example: Jane Doe", true)}
             </div>
             <div className="col-12 col-md-6">
-              {renderField("NIK / Nomor KTP", "nik", "text", "16 digit NIK", true, (
+              {renderField(t.nikKtp, "nik", "text", lang === "id" ? "16 digit NIK" : "16 digit ID Card", true, (
                 <>
                   <input
                     type="text"
                     name="nik"
                     className={`form-control ${errors.nik ? "is-invalid" : ""}`}
-                    placeholder="16 digit NIK"
+                    placeholder={lang === "id" ? "16 digit NIK" : "16-digit ID Card"}
                     value={form.nik}
                     onChange={handleChange}
                     maxLength={16}
@@ -1401,13 +1500,13 @@ function TambahPasienPage({ setPatients, setActivePage }) {
               ))}
             </div>
             <div className="col-12 col-md-6">
-              {renderField("Nomor BPJS / Asuransi", "noBpjs", "text", "13 digit (opsional)", false, (
+              {renderField(t.bpjsInsurance, "noBpjs", "text", lang === "id" ? "13 digit (opsional)" : "13-digit BPJS (optional)", false, (
                 <>
                   <input
                     type="text"
                     name="noBpjs"
                     className={`form-control ${errors.noBpjs ? "is-invalid" : ""}`}
-                    placeholder="13 digit (opsional)"
+                    placeholder={lang === "id" ? "13 digit (opsional)" : "13-digit (optional)"}
                     value={form.noBpjs}
                     onChange={handleChange}
                     maxLength={13}
@@ -1422,22 +1521,22 @@ function TambahPasienPage({ setPatients, setActivePage }) {
               ))}
             </div>
             <div className="col-6 col-md-3">
-              {renderField("Tanggal Lahir", "tglLahir", "date", "", true)}
+              {renderField(t.dob, "tglLahir", "date", "", true)}
             </div>
             <div className="col-6 col-md-3">
               <label className="form-label fw-medium" style={{ fontSize: 13, color: "#374151" }}>
-                Umur
+                {t.age}
               </label>
               <div
                 className="form-control"
                 style={{ fontSize: 13, background: "#f8fafc", color: "#475569" }}
               >
-                {form.umur !== "" ? `${form.umur} tahun` : "Otomatis dari Tgl Lahir"}
+                {form.umur !== "" ? `${form.umur} ${t.yearsOld}` : t.autoDob}
               </div>
             </div>
             <div className="col-12 col-md-6">
               <label className="form-label fw-medium" style={{ fontSize: 13, color: "#374151" }}>
-                Jenis Kelamin <span className="text-danger">*</span>
+                {t.gender} <span className="text-danger">*</span>
               </label>
               <select
                 name="jenisKelamin"
@@ -1446,9 +1545,9 @@ function TambahPasienPage({ setPatients, setActivePage }) {
                 onChange={handleChange}
                 style={{ fontSize: 13 }}
               >
-                <option value="">-- Pilih --</option>
-                <option>Laki-laki</option>
-                <option>Perempuan</option>
+                <option value="">{t.genderSelect}</option>
+                <option value="Laki-laki">{t.male}</option>
+                <option value="Perempuan">{t.female}</option>
               </select>
               {errors.jenisKelamin && (
                 <div className="invalid-feedback" style={{ fontSize: 12 }}>
@@ -1474,19 +1573,19 @@ function TambahPasienPage({ setPatients, setActivePage }) {
               }}
             />
             <span className="fw-semibold" style={{ fontSize: 13 }}>
-              Data Kontak
+              {t.contactData}
             </span>
           </div>
           <div className="row g-3">
             <div className="col-12">
               <label className="form-label fw-medium" style={{ fontSize: 13, color: "#374151" }}>
-                Alamat <span className="text-danger">*</span>
+                {t.address} <span className="text-danger">*</span>
               </label>
               <textarea
                 name="alamat"
                 className={`form-control ${errors.alamat ? "is-invalid" : ""}`}
                 rows={2}
-                placeholder="Alamat lengkap pasien"
+                placeholder={t.fullAddress}
                 value={form.alamat}
                 onChange={handleChange}
                 style={{ fontSize: 13, resize: "none" }}
@@ -1498,7 +1597,7 @@ function TambahPasienPage({ setPatients, setActivePage }) {
               )}
             </div>
             <div className="col-12 col-md-6">
-              {renderField("Nomor HP", "noHp", "tel", "Contoh: 08123456789", true)}
+              {renderField(t.noHp, "noHp", "tel", lang === "id" ? "Contoh: 08123456789" : "Example: 08123456789", true)}
             </div>
           </div>
         </div>
@@ -1518,18 +1617,18 @@ function TambahPasienPage({ setPatients, setActivePage }) {
               }}
             />
             <span className="fw-semibold" style={{ fontSize: 13 }}>
-              Kontak Darurat
+              {t.emergencyContact}
             </span>
           </div>
           <div className="row g-3">
             <div className="col-12 col-md-4">
-              {renderField("Nama Kontak Darurat", "namaKontak", "text", "Nama lengkap", true)}
+              {renderField(t.emergencyContactName, "namaKontak", "text", lang === "id" ? "Nama lengkap" : "Full name", true)}
             </div>
             <div className="col-12 col-md-4">
-              {renderField("Hubungan dengan Pasien", "hubKontak", "text", "Contoh: Ayah, Ibu, Suami, Istri", true)}
+              {renderField(t.relationshipToPatient, "hubKontak", "text", lang === "id" ? "Contoh: Ayah, Ibu, Suami, Istri" : "Example: Father, Mother, Spouse", true)}
             </div>
             <div className="col-12 col-md-4">
-              {renderField("Nomor HP Kontak Darurat", "noHpKontak", "tel", "Contoh: 08123456789", true)}
+              {renderField(t.emergencyContactPhone, "noHpKontak", "tel", lang === "id" ? "Contoh: 08123456789" : "Example: 08123456789", true)}
             </div>
           </div>
         </div>
@@ -1549,7 +1648,7 @@ function TambahPasienPage({ setPatients, setActivePage }) {
               }}
             />
             <span className="fw-semibold" style={{ fontSize: 13 }}>
-              Status Pasien
+              {t.status}
             </span>
           </div>
           <div className="row g-3">
@@ -1558,30 +1657,35 @@ function TambahPasienPage({ setPatients, setActivePage }) {
                 Status <span className="text-danger">*</span>
               </label>
               <div className="d-flex flex-wrap gap-2">
-                {["Umum", "BPJS", "Asuransi", "Perusahaan"].map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => {
-                      setForm((prev) => ({ ...prev, statusPasien: s }));
-                      if (errors.statusPasien)
-                        setErrors((prev) => ({ ...prev, statusPasien: "" }));
-                    }}
-                    className="btn btn-sm"
-                    style={{
-                      fontSize: 12,
-                      border: "1.5px solid",
-                      borderColor: form.statusPasien === s ? "#145c9c" : "#dee2e6",
-                      background: form.statusPasien === s ? "#145c9c" : "#fff",
-                      color: form.statusPasien === s ? "#fff" : "#374151",
-                      fontWeight: form.statusPasien === s ? 600 : 400,
-                      borderRadius: "30px",
-                      padding: "5px 15px"
-                    }}
-                  >
-                    {s}
-                  </button>
-                ))}
+                {["Umum", "BPJS", "Asuransi", "Perusahaan"].map((s) => {
+                  const displayStatus = s === "Umum" ? (lang === "id" ? "Umum" : "Public") :
+                                        s === "Asuransi" ? (lang === "id" ? "Asuransi" : "Insurance") :
+                                        s === "Perusahaan" ? (lang === "id" ? "Perusahaan" : "Corporate") : s;
+                  return (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => {
+                        setForm((prev) => ({ ...prev, statusPasien: s }));
+                        if (errors.statusPasien)
+                          setErrors((prev) => ({ ...prev, statusPasien: "" }));
+                      }}
+                      className="btn btn-sm"
+                      style={{
+                        fontSize: 12,
+                        border: "1.5px solid",
+                        borderColor: form.statusPasien === s ? "#145c9c" : "#dee2e6",
+                        background: form.statusPasien === s ? "#145c9c" : "#fff",
+                        color: form.statusPasien === s ? "#fff" : "#374151",
+                        fontWeight: form.statusPasien === s ? 600 : 400,
+                        borderRadius: "30px",
+                        padding: "5px 15px"
+                      }}
+                    >
+                      {displayStatus}
+                    </button>
+                  );
+                })}
               </div>
               {errors.statusPasien && (
                 <div className="text-danger mt-1" style={{ fontSize: 12 }}>
@@ -1606,7 +1710,7 @@ function TambahPasienPage({ setPatients, setActivePage }) {
             }}
           >
             <i className="bi bi-arrow-counterclockwise me-1" />
-            Reset
+            {t.reset}
           </button>
           <button
             className="btn text-white"
@@ -1621,7 +1725,7 @@ function TambahPasienPage({ setPatients, setActivePage }) {
             onClick={handleSubmit}
           >
             <i className="bi bi-floppy me-2" />
-            Simpan Data Pasien
+            {t.savePatientData}
           </button>
         </div>
       </div>
@@ -1629,7 +1733,9 @@ function TambahPasienPage({ setPatients, setActivePage }) {
   );
 }
 
-function UserProfilePage({ userName, userEmail, joinedAt, onLogout, onChangePassword, role, themeColor, badgeBg, badgeColor }) {
+function UserProfilePage({ userName, userEmail, joinedAt, onLogout, onChangePassword, role, themeColor, badgeBg, badgeColor, onUpdateProfileName }) {
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [tempName, setTempName] = useState(userName || "");
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -1694,9 +1800,63 @@ function UserProfilePage({ userName, userEmail, joinedAt, onLogout, onChangePass
             </div>
           </div>
 
-          <h4 className="fw-bold mb-1 text-dark" style={{ letterSpacing: "-0.5px" }}>
-            {userName || "User"}
-          </h4>
+          {isEditingName ? (
+            <div className="d-flex align-items-center justify-content-center gap-2 mb-2">
+              <input
+                type="text"
+                className="form-control form-control-sm text-center fw-bold fs-5"
+                style={{ maxWidth: "250px" }}
+                value={tempName}
+                onChange={(e) => setTempName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    if (tempName.trim()) {
+                      onUpdateProfileName(tempName.trim());
+                      setIsEditingName(false);
+                    }
+                  } else if (e.key === "Escape") {
+                    setIsEditingName(false);
+                  }
+                }}
+                autoFocus
+              />
+              <button 
+                onClick={() => {
+                  if (tempName.trim()) {
+                    onUpdateProfileName(tempName.trim());
+                    setIsEditingName(false);
+                  }
+                }}
+                className="btn btn-sm btn-success rounded-circle p-1"
+                style={{ width: "28px", height: "28px", display: "inline-flex", alignItems: "center", justifyContent: "center" }}
+              >
+                <i className="bi bi-check-lg" />
+              </button>
+              <button 
+                onClick={() => setIsEditingName(false)}
+                className="btn btn-sm btn-danger rounded-circle p-1"
+                style={{ width: "28px", height: "28px", display: "inline-flex", alignItems: "center", justifyContent: "center" }}
+              >
+                <i className="bi bi-x-lg" />
+              </button>
+            </div>
+          ) : (
+            <div className="d-flex align-items-center justify-content-center gap-2 mb-1">
+              <h4 className="fw-bold mb-0 text-dark" style={{ letterSpacing: "-0.5px" }}>
+                {userName || "User"}
+              </h4>
+              <button
+                onClick={() => {
+                  setTempName(userName || "");
+                  setIsEditingName(true);
+                }}
+                className="btn btn-link p-0 text-secondary border-0"
+                title="Ubah Nama Profile"
+              >
+                <i className="bi bi-pencil-square" style={{ fontSize: "16px" }} />
+              </button>
+            </div>
+          )}
           
           <span 
             className="badge mb-4 px-3 py-2 rounded-pill text-uppercase fw-semibold"
@@ -1837,7 +1997,7 @@ function UserProfilePage({ userName, userEmail, joinedAt, onLogout, onChangePass
 }
 
 // ─── Main App ─────────────────────────────────────────────────────────────────
-export default function AdminPanel({ onLogout, userName, userEmail, joinedAt, onChangePassword }) {
+export default function AdminPanel({ onLogout, userName, userEmail, joinedAt, onChangePassword, onUpdateProfileName, lang, onToggleLanguage }) {
   const [activePage, setActivePage] = useState("dashboard");
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1864,9 +2024,9 @@ export default function AdminPanel({ onLogout, userName, userEmail, joinedAt, on
   }, []);
 
   const pages = {
-    dashboard: { title: "Dashboard", component: <DashboardPage patients={patients} setActivePage={setActivePage} isMobile={isMobile} userName={userName} /> },
-    pasien: { title: "Data Pasien", component: <DataPasienPage patients={patients} setPatients={setPatients} /> },
-    tambah: { title: "Tambah Pasien", component: <TambahPasienPage setPatients={setPatients} setActivePage={setActivePage} /> },
+    dashboard: { title: "Dashboard", component: <DashboardPage patients={patients} setActivePage={setActivePage} isMobile={isMobile} userName={userName} lang={lang} /> },
+    pasien: { title: "Data Pasien", component: <DataPasienPage patients={patients} setPatients={setPatients} lang={lang} /> },
+    tambah: { title: "Tambah Pasien", component: <TambahPasienPage setPatients={setPatients} setActivePage={setActivePage} lang={lang} /> },
     profile: {
       title: "Profil Pengguna",
       component: (
@@ -1880,6 +2040,7 @@ export default function AdminPanel({ onLogout, userName, userEmail, joinedAt, on
           themeColor="#145c9c"
           badgeBg="#e0f2fe"
           badgeColor="#0369a1"
+          onUpdateProfileName={onUpdateProfileName}
         />
       )
     }
@@ -1901,7 +2062,7 @@ export default function AdminPanel({ onLogout, userName, userEmail, joinedAt, on
 
       <div style={{ background: "#f8fafc", minHeight: "100vh" }}>
         {!isMobile && (
-          <Sidebar activePage={activePage} setActivePage={setActivePage} userName={userName} onLogout={onLogout} />
+          <Sidebar activePage={activePage} setActivePage={setActivePage} userName={userName} onLogout={onLogout} lang={lang} />
         )}
 
         {/* Main content area */}
@@ -1909,7 +2070,7 @@ export default function AdminPanel({ onLogout, userName, userEmail, joinedAt, on
           marginLeft: isMobile ? 0 : 260, 
           paddingBottom: isMobile ? 80 : 0 
         }}>
-          {!isMobile && <Topbar title={current.title} />}
+          {!isMobile && <Topbar title={current.title} lang={lang} onToggleLanguage={onToggleLanguage} />}
           
           {/* Mobile Topbar for other pages */}
           {isMobile && activePage !== "dashboard" && (

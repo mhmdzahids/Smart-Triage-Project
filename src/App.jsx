@@ -8,6 +8,12 @@ function App() {
   const [session, setSession] = useState(null)
   const [userProfile, setUserProfile] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [lang, setLang] = useState(() => localStorage.getItem("app_lang") || "id")
+
+  const handleToggleLanguage = (newLang) => {
+    setLang(newLang);
+    localStorage.setItem("app_lang", newLang);
+  }
 
   // Switch mode visibility toggle with Ctrl + `
   const [showSwitcher, setShowSwitcher] = useState(false)
@@ -198,6 +204,28 @@ function App() {
     if (error) throw error;
   };
 
+  const handleUpdateProfileName = async (newName) => {
+    if (!session?.user?.id) return;
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({ name: newName })
+        .eq('user_id', session.user.id);
+      
+      if (error) throw error;
+      
+      setUserProfile(prev => prev ? { ...prev, name: newName } : prev);
+      
+      const { error: authError } = await supabase.auth.updateUser({
+        data: { name: newName }
+      });
+      if (authError) console.warn("Failed to update auth metadata:", authError.message);
+    } catch (err) {
+      console.error("Gagal memperbarui nama profil:", err.message);
+      throw err;
+    }
+  };
+
   const getActiveRole = () => {
     if (overrideRole) return overrideRole;
     if (userProfile?.role) return userProfile.role;
@@ -326,9 +354,9 @@ function App() {
       {/* Main Routing UI */}
       {session ? (
         <>
-          {activeRole === 'ADMIN' && <AdminPanel onLogout={handleLogout} userName={activeName} userEmail={activeEmail} joinedAt={joinedAt} onChangePassword={handleChangePassword} />}
-          {activeRole === 'NURSE' && <NursePanel onLogout={handleLogout} userName={activeName} userEmail={activeEmail} joinedAt={joinedAt} onChangePassword={handleChangePassword} />}
-          {activeRole === 'DOCTOR' && <DoctorPanel onLogout={handleLogout} userName={activeName} userEmail={activeEmail} joinedAt={joinedAt} onChangePassword={handleChangePassword} />}
+          {activeRole === 'ADMIN' && <AdminPanel onLogout={handleLogout} userName={activeName} userEmail={activeEmail} joinedAt={joinedAt} onChangePassword={handleChangePassword} onUpdateProfileName={handleUpdateProfileName} lang={lang} onToggleLanguage={handleToggleLanguage} />}
+          {activeRole === 'NURSE' && <NursePanel onLogout={handleLogout} userName={activeName} userEmail={activeEmail} joinedAt={joinedAt} onChangePassword={handleChangePassword} onUpdateProfileName={handleUpdateProfileName} lang={lang} onToggleLanguage={handleToggleLanguage} />}
+          {activeRole === 'DOCTOR' && <DoctorPanel onLogout={handleLogout} userName={activeName} userEmail={activeEmail} joinedAt={joinedAt} onChangePassword={handleChangePassword} onUpdateProfileName={handleUpdateProfileName} lang={lang} onToggleLanguage={handleToggleLanguage} />}
           {!activeRole && (
             <div 
               className="d-flex justify-content-center align-items-center text-center p-5 bg-light"

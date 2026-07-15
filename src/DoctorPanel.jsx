@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { fetchActiveVisits, saveDoctorDiagnosis, updateTriageDetails } from "./supabaseHelpers";
+import { translations } from "./translations";
 
 
 // Helper: Calculate BMI
@@ -17,6 +18,113 @@ function getInitials(name) {
     return (parts[0][0] + parts[1][0]).toUpperCase();
   }
   return parts[0] ? parts[0][0].toUpperCase() : "";
+}
+
+// Helper: Animated counter component
+function AnimatedCounter({ value, duration = 800 }) {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    let start = 0;
+    const end = parseInt(value, 10);
+    if (isNaN(end) || end <= 0) {
+      setCount(value);
+      return;
+    }
+
+    const totalSteps = 40;
+    const stepDuration = duration / totalSteps;
+    let step = 0;
+
+    const timer = setInterval(() => {
+      step++;
+      const progress = step / totalSteps;
+      const currentVal = Math.round(start + progress * (end - start));
+      setCount(currentVal);
+
+      if (step >= totalSteps) {
+        clearInterval(timer);
+        setCount(end);
+      }
+    }, stepDuration);
+
+    return () => clearInterval(timer);
+  }, [value, duration]);
+
+  return <>{count}</>;
+}
+
+// Helper component: Animated Circular MEOWS Score Progress Bar
+function MeowsCircleProgress({ score, risk, size = 90, strokeWidth = 6 }) {
+  const maxScore = 10;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  
+  // Cap score at maxScore for visual percentage representation
+  const displayScore = Math.min(score, maxScore);
+  const targetOffset = circumference - (displayScore / maxScore) * circumference;
+  
+  const [offset, setOffset] = useState(circumference);
+  
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setOffset(targetOffset);
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [score, targetOffset]);
+
+  const getRiskColor = (r) => {
+    if (r === "High") return "#dc3545"; // Red
+    if (r === "Medium") return "#ffc107"; // Yellow
+    return "#198754"; // Green
+  };
+
+  const riskColor = getRiskColor(risk);
+
+  return (
+    <div className="position-relative d-inline-flex align-items-center justify-content-center" style={{ width: size, height: size, marginBottom: 12 }}>
+      <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
+        {/* Background track circle */}
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="transparent"
+          stroke="#f1f5f9"
+          strokeWidth={strokeWidth}
+        />
+        {/* Foreground progress circle */}
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="transparent"
+          stroke={riskColor}
+          strokeWidth={strokeWidth}
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          strokeLinecap="round"
+          style={{
+            transition: "stroke-dashoffset 1s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.5s ease"
+          }}
+        />
+      </svg>
+      {/* Centered score text badge */}
+      <div
+        className="position-absolute d-flex align-items-center justify-content-center rounded-circle"
+        style={{
+          width: size - strokeWidth * 2 - 2,
+          height: size - strokeWidth * 2 - 2,
+          background: riskColor + "12",
+          color: riskColor,
+          fontWeight: 800,
+          fontSize: size > 80 ? "32px" : "24px"
+        }}
+      >
+        {score}
+      </div>
+    </div>
+  );
 }
 
 function getBMICategory(bmi) {
@@ -106,11 +214,11 @@ function downloadMedicalRecordCSV(p) {
 }
 
 // ─── Sidebar Component (Doctor Indigo Vibes) ─────────────────────────────────
-function SidebarDoctor({ activePage, setActivePage, userName, onLogout }) {
+function SidebarDoctor({ activePage, setActivePage, userName, onLogout, lang }) {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const navItems = [
-    { id: "dashboard", icon: "bi-grid-fill", label: "Dashboard Dokter" },
-    { id: "diagnose", icon: "bi-heart-pulse-fill", label: "Pasien & Diagnosis" },
+    { id: "dashboard", icon: "bi-grid-fill", label: translations[lang].dashboardDoctor },
+    { id: "diagnose", icon: "bi-heart-pulse-fill", label: translations[lang].patientsDiagnosis },
   ];
 
   return (
@@ -277,19 +385,20 @@ function SidebarDoctor({ activePage, setActivePage, userName, onLogout }) {
 }
 
 // ─── Doctor Dashboard Subpage ────────────────────────────────────────────────
-function DoctorDashboard({ patients, setActivePage, setSelectedId, isMobile, userName }) {
-  // Stats
+function DoctorDashboard({ patients, setActivePage, setSelectedId, isMobile, userName, lang }) {
   const totalCount = patients.length;
   const waitingDiagnose = patients.filter(p => p.statusDiagnosis === "Belum Diperiksa").length;
   const diagnosedCount = patients.filter(p => p.statusDiagnosis === "Sudah Diperiksa").length;
 
   const urgentCount = patients.filter(p => p.triageRisk === "High" && p.statusDiagnosis === "Belum Diperiksa").length;
 
+  const t = translations[lang];
+
   const stats = [
-    { label: "Total Pasien IGD", value: totalCount, icon: "bi-people", color: "#4f46e5", bg: "#eef2ff" },
-    { label: "Menunggu Diagnosis", value: waitingDiagnose, icon: "bi-hourglass-split", color: "#f59e0b", bg: "#fffbeb" },
-    { label: "Sudah Didokumentasi", value: diagnosedCount, icon: "bi-check2-square", color: "#10b981", bg: "#ecfdf5" },
-    { label: "Resiko Tinggi IGD (Waiting)", value: urgentCount, icon: "bi-exclamation-triangle", color: "#ef4444", bg: "#fef2f2" }
+    { label: t.totalIgdPatients, value: totalCount, icon: "bi-people", color: "#4f46e5", bg: "#eef2ff" },
+    { label: t.waitingDiagnosis, value: waitingDiagnose, icon: "bi-hourglass-split", color: "#f59e0b", bg: "#fffbeb" },
+    { label: t.documented, value: diagnosedCount, icon: "bi-check2-square", color: "#10b981", bg: "#ecfdf5" },
+    { label: t.highRiskIgdWaiting, value: urgentCount, icon: "bi-exclamation-triangle", color: "#ef4444", bg: "#fef2f2" }
   ];
 
   // Clinical priority sorting: MEOWS score high -> low, undiagnosed first
@@ -339,7 +448,7 @@ function DoctorDashboard({ patients, setActivePage, setSelectedId, isMobile, use
                 </div>
                 <div>
                   <div className="text-muted fw-semibold mb-1" style={{ fontSize: 11 }}>{s.label.split(" (")[0]}</div>
-                  <div className="fw-bold" style={{ fontSize: 24, color: "#1e293b", lineHeight: 1.1 }}>{s.value}</div>
+                  <div className="fw-bold" style={{ fontSize: 24, color: "#1e293b", lineHeight: 1.1 }}><AnimatedCounter value={s.value} /></div>
                 </div>
               </div>
             </div>
@@ -506,8 +615,8 @@ function DoctorDashboard({ patients, setActivePage, setSelectedId, isMobile, use
                   <i className={`bi ${extraIcon}`} style={{ fontSize: 16, color: extraIconColor }} />
                 </div>
                 <div>
-                  <div className="fw-bold text-dark" style={{ fontSize: 32, lineHeight: 1.2 }}>
-                    {s.value}
+                   <div className="fw-bold text-dark" style={{ fontSize: 32, lineHeight: 1.2 }}>
+                    <AnimatedCounter value={s.value} />
                   </div>
                   <div
                     className="text-uppercase fw-bold"
@@ -539,10 +648,10 @@ function DoctorDashboard({ patients, setActivePage, setSelectedId, isMobile, use
         <div className="d-flex align-items-center justify-content-between mb-4">
           <div>
             <h5 className="fw-bold mb-1 text-dark" style={{ letterSpacing: "-0.3px" }}>
-              Antrean Pemeriksaan IGD
+              {t.examAntrean}
             </h5>
             <div className="text-muted" style={{ fontSize: 13 }}>
-              Diurutkan otomatis berdasarkan prioritas & tingkat keparahan MEOWS
+              {t.examSubAntrean}
             </div>
           </div>
           <button
@@ -560,7 +669,7 @@ function DoctorDashboard({ patients, setActivePage, setSelectedId, isMobile, use
               setActivePage("diagnose");
             }}
           >
-            Mulai Diagnosis <i className="bi bi-arrow-right" />
+            {t.startDiagnose} <i className="bi bi-arrow-right" />
           </button>
         </div>
 
@@ -568,13 +677,13 @@ function DoctorDashboard({ patients, setActivePage, setSelectedId, isMobile, use
           <table className="table table-hover align-middle mb-0" style={{ fontSize: 13.5 }}>
             <thead>
               <tr style={{ borderBottom: "1px solid #f1f5f9" }}>
-                <th className="fw-bold text-uppercase pb-3 border-0" style={{ color: "#94a3b8", fontSize: 10, letterSpacing: "0.5px" }}>NAMA PASIEN</th>
-                <th className="fw-bold text-uppercase pb-3 border-0" style={{ color: "#94a3b8", fontSize: 10, letterSpacing: "0.5px" }}>WAKTU TRIASE</th>
-                <th className="fw-bold text-uppercase pb-3 border-0" style={{ color: "#94a3b8", fontSize: 10, letterSpacing: "0.5px" }}>KELUHAN UTAMA</th>
-                <th className="fw-bold text-uppercase pb-3 border-0 text-center" style={{ color: "#94a3b8", fontSize: 10, letterSpacing: "0.5px" }}>MEOWS</th>
-                <th className="fw-bold text-uppercase pb-3 border-0 text-center" style={{ color: "#94a3b8", fontSize: 10, letterSpacing: "0.5px" }}>TINGKAT RESIKO</th>
-                <th className="fw-bold text-uppercase pb-3 border-0 text-center" style={{ color: "#94a3b8", fontSize: 10, letterSpacing: "0.5px" }}>STATUS DOKTER</th>
-                <th className="fw-bold text-uppercase pb-3 border-0 text-center" style={{ color: "#94a3b8", fontSize: 10, letterSpacing: "0.5px" }}>AKSI</th>
+                <th className="fw-bold text-uppercase pb-3 border-0" style={{ color: "#94a3b8", fontSize: 10, letterSpacing: "0.5px" }}>{t.patientName}</th>
+                <th className="fw-bold text-uppercase pb-3 border-0" style={{ color: "#94a3b8", fontSize: 10, letterSpacing: "0.5px" }}>{t.triageTime}</th>
+                <th className="fw-bold text-uppercase pb-3 border-0" style={{ color: "#94a3b8", fontSize: 10, letterSpacing: "0.5px" }}>{t.chiefComplaint}</th>
+                <th className="fw-bold text-uppercase pb-3 border-0 text-center" style={{ color: "#94a3b8", fontSize: 10, letterSpacing: "0.5px" }}>{t.meows.toUpperCase()}</th>
+                <th className="fw-bold text-uppercase pb-3 border-0 text-center" style={{ color: "#94a3b8", fontSize: 10, letterSpacing: "0.5px" }}>{t.riskLevel}</th>
+                <th className="fw-bold text-uppercase pb-3 border-0 text-center" style={{ color: "#94a3b8", fontSize: 10, letterSpacing: "0.5px" }}>{t.doctorStatus}</th>
+                <th className="fw-bold text-uppercase pb-3 border-0 text-center" style={{ color: "#94a3b8", fontSize: 10, letterSpacing: "0.5px" }}>{t.action.toUpperCase()}</th>
               </tr>
             </thead>
             <tbody>
@@ -671,8 +780,8 @@ function DoctorDashboard({ patients, setActivePage, setSelectedId, isMobile, use
                     </td>
                     <td className="py-3 text-center">
                       <button
-                        className="btn btn-sm btn-outline-indigo d-inline-flex align-items-center gap-1.5"
-                        style={{ borderColor: "#4f46e5", color: "#4f46e5", fontSize: 12, borderRadius: "20px", fontWeight: "600", padding: "5px 12px" }}
+                        className="btn btn-sm btn-outline-indigo d-inline-flex align-items-center"
+                        style={{ borderColor: "#4f46e5", color: "#4f46e5", fontSize: 12, borderRadius: "20px", fontWeight: "600", padding: "5px 12px", gap: "8px" }}
                         onClick={() => {
                           setSelectedId(p.id);
                           setActivePage("diagnose");
@@ -694,7 +803,8 @@ function DoctorDashboard({ patients, setActivePage, setSelectedId, isMobile, use
 }
 
 // ─── Diagnose Workspace Subpage ──────────────────────────────────────────────
-function DiagnoseWorkspace({ patients, setPatients, selectedId, setSelectedId }) {
+function DiagnoseWorkspace({ patients, setPatients, selectedId, setSelectedId, lang }) {
+  const t = translations[lang];
   const activePatient = patients.find(p => p.id === selectedId) || patients[0];
 
   // Diagnosis inputs states
@@ -718,6 +828,20 @@ function DiagnoseWorkspace({ patients, setPatients, selectedId, setSelectedId })
   const [isEditingVitals, setIsEditingVitals] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [currentMeows, setCurrentMeows] = useState({ score: activePatient?.meowsScore || 0, risk: activePatient?.triageRisk || "Low" });
+
+  const [isAiGenerating, setIsAiGenerating] = useState(false);
+  const [prevTrack, setPrevTrack] = useState({ score: null, patientId: null });
+
+  useEffect(() => {
+    if (currentMeows.score !== prevTrack.score || activePatient?.id !== prevTrack.patientId) {
+      setIsAiGenerating(true);
+      setPrevTrack({ score: currentMeows.score, patientId: activePatient?.id });
+      const timer = setTimeout(() => {
+        setIsAiGenerating(false);
+      }, 1200);
+      return () => clearTimeout(timer);
+    }
+  }, [currentMeows.score, activePatient?.id]);
 
   useEffect(() => {
     let active = true;
@@ -928,7 +1052,7 @@ function DiagnoseWorkspace({ patients, setPatients, selectedId, setSelectedId })
         >
           <h6 className="fw-semibold mb-3 px-1" style={{ color: "#312e81", fontSize: 14 }}>
             <i className="bi bi-people-fill me-2" />
-            Daftar Pasien IGD
+            {t.patientList}
           </h6>
           <div className="d-flex flex-column gap-2" style={{ maxHeight: "65vh", overflowY: "auto" }}>
             {[...patients]
@@ -965,9 +1089,9 @@ function DiagnoseWorkspace({ patients, setPatients, selectedId, setSelectedId })
                       </span>
                     </div>
                     <div className="d-flex align-items-center justify-content-between text-muted" style={{ fontSize: 11 }}>
-                      <span>{p.umur} thn • {p.jenisKelamin}</span>
+                      <span>{p.umur} {t.yearsOld} • {p.jenisKelamin === "Laki-laki" ? t.male : p.jenisKelamin === "Perempuan" ? t.female : p.jenisKelamin}</span>
                       <span className={`fw-medium ${hasDiagnosis ? "text-success" : "text-warning"}`}>
-                        {hasDiagnosis ? "Diagnosed" : "Waiting"}
+                        {hasDiagnosis ? t.diagnosed : t.waiting}
                       </span>
                     </div>
                   </button>
@@ -991,7 +1115,7 @@ function DiagnoseWorkspace({ patients, setPatients, selectedId, setSelectedId })
             {saveSuccess && (
               <div className="alert alert-success d-flex align-items-center gap-2 mb-3" style={{ fontSize: 13, borderRadius: "12px" }}>
                 <i className="bi bi-check-circle-fill" />
-                Diagnosis dan tanda vital untuk <strong>{activePatient.nama}</strong> berhasil disimpan!
+                {t.diagnosisVitalsSaved.replace("pasien", activePatient.nama).replace("patient", activePatient.nama)}
               </div>
             )}
 
@@ -1000,7 +1124,7 @@ function DiagnoseWorkspace({ patients, setPatients, selectedId, setSelectedId })
               <div>
                 <h5 className="fw-bold mb-1" style={{ color: "#312e81" }}>{activePatient.nama}</h5>
                 <p className="text-muted mb-0" style={{ fontSize: 12 }}>
-                  NIK: <span className="font-monospace">{activePatient.nik}</span> | No BPJS: <span className="font-monospace">{activePatient.noBpjs || "-"}</span> | Kontak: {activePatient.noHp}
+                  NIK: <span className="font-monospace">{activePatient.nik}</span> | {t.bpjsNum}: <span className="font-monospace">{activePatient.noBpjs || "-"}</span> | {t.noHp}: {activePatient.noHp}
                 </p>
               </div>
               <button
@@ -1009,7 +1133,7 @@ function DiagnoseWorkspace({ patients, setPatients, selectedId, setSelectedId })
                 onClick={() => downloadMedicalRecordCSV(activePatient)}
               >
                 <i className="bi bi-download" />
-                Download Laporan (CSV)
+                {t.downloadReport}
               </button>
             </div>
 
@@ -1025,39 +1149,50 @@ function DiagnoseWorkspace({ patients, setPatients, selectedId, setSelectedId })
                     borderRadius: "16px"
                   }}
                 >
-                  <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b" }} className="mb-2">STATUS MEOWS</div>
-                  <div
-                    className="d-inline-flex align-items-center justify-content-center rounded-circle mb-2"
-                    style={{
-                      width: 70,
-                      height: 70,
-                      border: `3px solid ${guidance.color}`,
-                      color: guidance.color,
-                      fontWeight: 800,
-                      fontSize: 26,
-                    }}
-                  >
-                    {currentMeows.score}
-                  </div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b" }} className="mb-2">{t.statusMeows}</div>
+                  <MeowsCircleProgress score={currentMeows.score} risk={currentMeows.risk} size={70} strokeWidth={5} />
                   <h6 className="fw-bold mb-0" style={{ color: guidance.color }}>
-                    Resiko {currentMeows.risk === "High" ? "Tinggi" : currentMeows.risk === "Medium" ? "Sedang" : "Rendah"}
+                    {currentMeows.risk === "High" ? t.highRiskAlert : currentMeows.risk === "Medium" ? t.mediumRiskAlert : t.lowRiskAlert}
                   </h6>
-                  <span className="text-muted mt-1" style={{ fontSize: 10 }}>Ditriase: {activePatient.tglTriage || "-"}</span>
+                  <span className="text-muted mt-1" style={{ fontSize: 10 }}>{lang === "id" ? "Ditriase" : "Triaged"}: {activePatient.tglTriage || "-"}</span>
                 </div>
               </div>
 
               {/* Triage Clinical Action Recommendation */}
               <div className="col-12 col-md-8">
-                <div className="p-3 h-100 bg-light" style={{ border: "1px solid #e2e8f0", borderRadius: "16px" }}>
-                  <div className="fw-bold mb-2 text-dark" style={{ fontSize: 12 }}>
-                    <i className="bi bi-shield-exclamation me-1" />
-                    Rekomendasi Triage MEOWS:
+                <div className="p-3 h-100 bg-light" style={{ border: "1px solid #e2e8f0", borderRadius: "16px", minHeight: "135px", display: "flex", flexDirection: "column" }}>
+                  <div className="d-flex align-items-center justify-content-between mb-2 pb-1 border-bottom" style={{ fontSize: 12 }}>
+                    <div className="fw-bold text-dark d-flex align-items-center">
+                      <img 
+                        src="https://cdn-icons-png.flaticon.com/512/18561/18561814.png" 
+                        alt="Sparkling Star" 
+                        className="sparkles-pulse" 
+                        style={{ width: "16px", height: "16px", marginRight: "8px" }} 
+                      />
+                      <span className="ai-gradient-text fw-bold">{t.aiRecommendation}</span>
+                    </div>
+                    <span className="badge bg-white text-muted border text-uppercase" style={{ fontSize: 9, color: guidance.color }}>{currentMeows.risk === "High" ? t.highRisk : currentMeows.risk === "Medium" ? t.mediumRisk : t.lowRisk}</span>
                   </div>
-                  <ul className="ps-3 mb-0" style={{ fontSize: 12, color: "#334155" }}>
-                    {guidance.points.map((pt, index) => (
-                      <li key={index} className="mb-1">{pt}</li>
-                    ))}
-                  </ul>
+
+                  {isAiGenerating ? (
+                    <div className="ai-shimmer-text flex-grow-1 d-flex flex-column justify-content-center py-2">
+                      <div className="d-flex align-items-center gap-2 mb-2 text-muted fw-medium" style={{ fontSize: 11 }}>
+                        <span className="spinner-grow spinner-grow-sm text-primary" role="status" style={{ width: 10, height: 10 }} />
+                        {t.aiFormulating}
+                      </div>
+                      <div style={{ height: 6, background: "#e2e8f0", borderRadius: 4, width: "90%", marginBottom: 6 }} />
+                      <div style={{ height: 6, background: "#e2e8f0", borderRadius: 4, width: "75%", marginBottom: 6 }} />
+                      <div style={{ height: 6, background: "#e2e8f0", borderRadius: 4, width: "80%" }} />
+                    </div>
+                  ) : (
+                    <div style={{ animation: "fadeIn 0.5s ease" }}>
+                      <ul className="ps-3 mb-0" style={{ fontSize: 12, color: "#334155" }}>
+                        {guidance.points.map((pt, index) => (
+                          <li key={index} className="mb-1">{pt}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -1069,10 +1204,10 @@ function DiagnoseWorkspace({ patients, setPatients, selectedId, setSelectedId })
                 <div className="mb-4 bg-light p-3" style={{ border: "1px solid #e2e8f0", borderRadius: "16px" }}>
                   <div className="fw-bold text-dark mb-1" style={{ fontSize: 13 }}>
                     <i className="bi bi-chat-left-text-fill text-indigo me-2" style={{ color: "#4f46e5" }} />
-                    Keluhan Utama / Alasan Masuk IGD
+                    {t.chiefComplaintDesc}
                   </div>
                   <div className="text-muted p-2 bg-white" style={{ fontSize: 13, minHeight: 45, border: "1px solid #e2e8f0", borderRadius: "10px" }}>
-                    {activePatient.keluhan || "Tidak ada data keluhan."}
+                    {activePatient.keluhan || (lang === "id" ? "Tidak ada data keluhan." : "No complaint data available.")}
                   </div>
                 </div>
 
@@ -1081,7 +1216,7 @@ function DiagnoseWorkspace({ patients, setPatients, selectedId, setSelectedId })
                   <div className="d-flex align-items-center justify-content-between mb-3">
                     <div className="d-flex align-items-center gap-2" style={{ color: "#312e81" }}>
                       <div style={{ width: 4, height: 16, background: "#4f46e5", borderRadius: 2 }} />
-                      <span className="fw-bold" style={{ fontSize: 14 }}>Parameter Antropometri / Fisik</span>
+                      <span className="fw-bold" style={{ fontSize: 14 }}>{t.physicalAnthropometricData}</span>
                     </div>
                     {isEditingAnthro ? (
                       <div className="d-flex gap-2">
@@ -1115,7 +1250,7 @@ function DiagnoseWorkspace({ patients, setPatients, selectedId, setSelectedId })
                     {/* Berat Badan */}
                     <div className="col-4 col-sm-3">
                       <div className={`border p-2 text-center ${isEditingAnthro ? "bg-white shadow-sm" : "bg-light"}`} style={{ borderRadius: "12px" }}>
-                        <label className="text-muted d-block mb-1" style={{ fontSize: 10 }}>Berat Badan (kg)</label>
+                        <label className="text-muted d-block mb-1" style={{ fontSize: 10 }}>{t.bodyWeight}</label>
                         {isEditingAnthro ? (
                           <input
                             type="number"
@@ -1135,7 +1270,7 @@ function DiagnoseWorkspace({ patients, setPatients, selectedId, setSelectedId })
                     {/* Tinggi Badan */}
                     <div className="col-4 col-sm-3">
                       <div className={`border p-2 text-center ${isEditingAnthro ? "bg-white shadow-sm" : "bg-light"}`} style={{ borderRadius: "12px" }}>
-                        <label className="text-muted d-block mb-1" style={{ fontSize: 10 }}>Tinggi Badan (cm)</label>
+                        <label className="text-muted d-block mb-1" style={{ fontSize: 10 }}>{t.bodyHeight}</label>
                         {isEditingAnthro ? (
                           <input
                             type="number"
@@ -1155,7 +1290,7 @@ function DiagnoseWorkspace({ patients, setPatients, selectedId, setSelectedId })
                     {/* BMI / IMT */}
                     <div className="col-4 col-sm-3">
                       <div className="border p-2 text-center bg-light" style={{ borderRadius: "12px" }}>
-                        <label className="text-muted d-block mb-1" style={{ fontSize: 10 }}>BMI / IMT</label>
+                        <label className="text-muted d-block mb-1" style={{ fontSize: 10 }}>{t.bmiCategory}</label>
                         <div className={`fw-bold badge ${getBMIBadgeColor(isEditingAnthro ? currentBmi : bmiVal)}`} style={{ fontSize: 11, display: "block", padding: "6px", height: 26, lineHeight: "14px", borderRadius: "6px" }}>
                           {isEditingAnthro ? (currentBmi ? `${currentBmi}` : "-") : (bmiVal ? `${bmiVal}` : "-")}
                         </div>
@@ -1165,7 +1300,7 @@ function DiagnoseWorkspace({ patients, setPatients, selectedId, setSelectedId })
                     {/* Kategori BMI */}
                     <div className="col-12 col-sm-3">
                       <div className="border p-2 text-center bg-light" style={{ borderRadius: "12px" }}>
-                        <label className="text-muted d-block mb-1" style={{ fontSize: 10 }}>Kategori BMI</label>
+                        <label className="text-muted d-block mb-1" style={{ fontSize: 10 }}>{lang === "id" ? "Kategori BMI" : "BMI Category"}</label>
                         <div className="fw-semibold text-truncate" style={{ fontSize: 11, height: 26, lineHeight: "26px" }} title={isEditingAnthro ? currentBmiCat : bmiCat}>
                           {(isEditingAnthro ? currentBmiCat : bmiCat) || "-"}
                         </div>
@@ -1175,7 +1310,7 @@ function DiagnoseWorkspace({ patients, setPatients, selectedId, setSelectedId })
                     {/* Lingkar Kepala */}
                     <div className="col-4">
                       <div className={`border p-2 text-center ${isEditingAnthro ? "bg-white shadow-sm" : "bg-light"}`} style={{ borderRadius: "12px" }}>
-                        <label className="text-muted d-block mb-1" style={{ fontSize: 10 }}>Lingkar Kepala</label>
+                        <label className="text-muted d-block mb-1" style={{ fontSize: 10 }}>{t.headCircumference}</label>
                         {isEditingAnthro ? (
                           <input
                             type="number"
@@ -1195,7 +1330,7 @@ function DiagnoseWorkspace({ patients, setPatients, selectedId, setSelectedId })
                     {/* Lingkar Lengan */}
                     <div className="col-4">
                       <div className={`border p-2 text-center ${isEditingAnthro ? "bg-white shadow-sm" : "bg-light"}`} style={{ borderRadius: "12px" }}>
-                        <label className="text-muted d-block mb-1" style={{ fontSize: 10 }}>Lingkar Lengan (LiLA)</label>
+                        <label className="text-muted d-block mb-1" style={{ fontSize: 10 }}>{t.muac}</label>
                         {isEditingAnthro ? (
                           <input
                             type="number"
@@ -1216,7 +1351,7 @@ function DiagnoseWorkspace({ patients, setPatients, selectedId, setSelectedId })
                     {/* Golongan Darah */}
                     <div className="col-4">
                       <div className={`border p-2 text-center ${isEditingAnthro ? "bg-white shadow-sm" : "bg-light"}`} style={{ borderRadius: "12px" }}>
-                        <label className="text-muted d-block mb-1" style={{ fontSize: 10 }}>Golongan Darah</label>
+                        <label className="text-muted d-block mb-1" style={{ fontSize: 10 }}>{t.bloodType}</label>
                         {isEditingAnthro ? (
                           <select
                             className="form-select form-select-sm text-center fw-bold p-0"
@@ -1253,7 +1388,7 @@ function DiagnoseWorkspace({ patients, setPatients, selectedId, setSelectedId })
                   <div className="d-flex align-items-center justify-content-between mb-3">
                     <div className="d-flex align-items-center gap-2" style={{ color: "#312e81" }}>
                       <div style={{ width: 4, height: 16, background: "#4f46e5", borderRadius: 2 }} />
-                      <span className="fw-bold" style={{ fontSize: 14 }}>Tanda-tanda Vital (Vitals Monitor)</span>
+                      <span className="fw-bold" style={{ fontSize: 14 }}>{t.vitalTriageParameters}</span>
                     </div>
                     {isEditingVitals ? (
                       <div className="d-flex gap-2">
@@ -1289,7 +1424,7 @@ function DiagnoseWorkspace({ patients, setPatients, selectedId, setSelectedId })
                       <div className={`border p-2 d-flex align-items-center gap-2 ${isEditingVitals ? "bg-white shadow-sm" : "bg-light"}`} style={{ borderRadius: "12px" }}>
                         <i className="bi bi-lungs" style={{ color: "#4f46e5", fontSize: 16 }} />
                         <div className="flex-grow-1">
-                          <label className="text-muted" style={{ fontSize: 9, display: "block" }}>Resp. Rate (RR)</label>
+                          <label className="text-muted" style={{ fontSize: 9, display: "block" }}>{t.respiratoryRate}</label>
                           {isEditingVitals ? (
                             <div className="d-flex align-items-center gap-1">
                               <input
@@ -1315,7 +1450,7 @@ function DiagnoseWorkspace({ patients, setPatients, selectedId, setSelectedId })
                       <div className={`border p-2 d-flex align-items-center gap-2 ${isEditingVitals ? "bg-white shadow-sm" : "bg-light"}`} style={{ borderRadius: "12px" }}>
                         <i className="bi bi-activity" style={{ color: "#4f46e5", fontSize: 16 }} />
                         <div className="flex-grow-1">
-                          <label className="text-muted" style={{ fontSize: 9, display: "block" }}>Saturasi SpO2</label>
+                          <label className="text-muted" style={{ fontSize: 9, display: "block" }}>{t.oxygenSaturation}</label>
                           {isEditingVitals ? (
                             <div className="d-flex align-items-center gap-1">
                               <input
@@ -1341,7 +1476,7 @@ function DiagnoseWorkspace({ patients, setPatients, selectedId, setSelectedId })
                       <div className={`border p-2 d-flex align-items-center gap-2 ${isEditingVitals ? "bg-white shadow-sm" : "bg-light"}`} style={{ borderRadius: "12px" }}>
                         <i className="bi bi-heart-arrow" style={{ color: "#4f46e5", fontSize: 16 }} />
                         <div className="flex-grow-1">
-                          <label className="text-muted" style={{ fontSize: 9, display: "block" }}>Terapi Oksigen</label>
+                          <label className="text-muted" style={{ fontSize: 9, display: "block" }}>{t.oxygenTherapy}</label>
                           {isEditingVitals ? (
                             <select
                               className="form-select form-select-sm fw-bold p-1"
@@ -1349,12 +1484,12 @@ function DiagnoseWorkspace({ patients, setPatients, selectedId, setSelectedId })
                               value={suplemenO2}
                               onChange={(e) => setSuplemenO2(e.target.value)}
                             >
-                              <option value="Tidak">Tidak</option>
-                              <option value="Ya">Ya</option>
+                              <option value="Tidak">{t.roomAir}</option>
+                              <option value="Ya">{t.supplementalO2}</option>
                             </select>
                           ) : (
                             <div className="fw-bold" style={{ fontSize: 12, height: 26, lineHeight: "26px" }}>
-                              {activePatient.suplemenO2 || "-"}
+                              {activePatient.suplemenO2 === "Tidak" ? t.roomAir : activePatient.suplemenO2 === "Ya" ? t.supplementalO2 : activePatient.suplemenO2 || "-"}
                             </div>
                           )}
                         </div>
@@ -1366,7 +1501,7 @@ function DiagnoseWorkspace({ patients, setPatients, selectedId, setSelectedId })
                       <div className={`border p-2 d-flex align-items-center gap-2 ${isEditingVitals ? "bg-white shadow-sm" : "bg-light"}`} style={{ borderRadius: "12px" }}>
                         <i className="bi bi-thermometer-half" style={{ color: "#4f46e5", fontSize: 16 }} />
                         <div className="flex-grow-1">
-                          <label className="text-muted" style={{ fontSize: 9, display: "block" }}>Suhu Tubuh</label>
+                          <label className="text-muted" style={{ fontSize: 9, display: "block" }}>{t.bodyTemp}</label>
                           {isEditingVitals ? (
                             <div className="d-flex align-items-center gap-1">
                               <input
@@ -1393,7 +1528,7 @@ function DiagnoseWorkspace({ patients, setPatients, selectedId, setSelectedId })
                       <div className={`border p-2 d-flex align-items-center gap-2 ${isEditingVitals ? "bg-white shadow-sm" : "bg-light"}`} style={{ borderRadius: "12px" }}>
                         <i className="bi bi-heart-pulse" style={{ color: "#4f46e5", fontSize: 16 }} />
                         <div className="flex-grow-1">
-                          <label className="text-muted" style={{ fontSize: 9, display: "block" }}>Tekanan Darah</label>
+                          <label className="text-muted" style={{ fontSize: 9, display: "block" }}>{t.spo2Tens}</label>
                           {isEditingVitals ? (
                             <div className="d-flex align-items-center gap-1">
                               <input
@@ -1428,7 +1563,7 @@ function DiagnoseWorkspace({ patients, setPatients, selectedId, setSelectedId })
                       <div className={`border p-2 d-flex align-items-center gap-2 ${isEditingVitals ? "bg-white shadow-sm" : "bg-light"}`} style={{ borderRadius: "12px" }}>
                         <i className="bi bi-droplet-half" style={{ color: "#4f46e5", fontSize: 16 }} />
                         <div className="flex-grow-1">
-                          <label className="text-muted" style={{ fontSize: 9, display: "block" }}>Nadi / HR</label>
+                          <label className="text-muted" style={{ fontSize: 9, display: "block" }}>{t.heartRate}</label>
                           {isEditingVitals ? (
                             <div className="d-flex align-items-center gap-1">
                               <input
@@ -1454,7 +1589,7 @@ function DiagnoseWorkspace({ patients, setPatients, selectedId, setSelectedId })
                       <div className={`border p-2 d-flex align-items-center gap-2 ${isEditingVitals ? "bg-white shadow-sm" : "bg-light"}`} style={{ borderRadius: "12px" }}>
                         <i className="bi bi-brain" style={{ color: "#4f46e5", fontSize: 16 }} />
                         <div className="flex-grow-1">
-                          <label className="text-muted" style={{ fontSize: 9, display: "block" }}>Kesadaran</label>
+                          <label className="text-muted" style={{ fontSize: 9, display: "block" }}>{t.consciousnessLevel}</label>
                           {isEditingVitals ? (
                             <select
                               className="form-select form-select-sm fw-bold p-1"
@@ -1487,17 +1622,17 @@ function DiagnoseWorkspace({ patients, setPatients, selectedId, setSelectedId })
                 >
                   <h6 className="fw-bold text-indigo mb-3" style={{ fontSize: 13, color: "#4338ca" }}>
                     <i className="bi bi-capsule-therapeutic me-1" />
-                    FORMULIR DIAGNOSIS MEDIS
+                    {lang === "id" ? "FORMULIR DIAGNOSIS MEDIS" : "MEDICAL DIAGNOSIS FORM"}
                   </h6>
 
                   <div className="mb-4">
                     <label className="form-label fw-semibold text-muted mb-1" style={{ fontSize: 12 }}>
-                      Diagnosis Utama / ICD-10 <span className="text-danger">*</span>
+                      {t.primaryICD10} <span className="text-danger">*</span>
                     </label>
                     <textarea
                       className="form-control"
                       rows={6}
-                      placeholder="Masukkan diagnosa medis..."
+                      placeholder={lang === "id" ? "Masukkan diagnosa medis..." : "Enter medical diagnosis..."}
                       value={diagnosa}
                       onChange={(e) => setDiagnosa(e.target.value)}
                       style={{ fontSize: 13, resize: "none", borderRadius: "12px" }}
@@ -1510,7 +1645,7 @@ function DiagnoseWorkspace({ patients, setPatients, selectedId, setSelectedId })
                     onClick={handleSave}
                   >
                     <i className="bi bi-file-earmark-medical-fill" />
-                    Simpan Diagnosis & Tanda Vital
+                    {t.saveDiagnosis}
                   </button>
                 </div>
               </div>
@@ -1519,7 +1654,7 @@ function DiagnoseWorkspace({ patients, setPatients, selectedId, setSelectedId })
         ) : (
           <div className="text-center py-5 text-muted bg-white border" style={{ borderRadius: "20px", boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.03)" }}>
             <i className="bi bi-search d-block mb-2" style={{ fontSize: 36 }} />
-            Pilih pasien untuk meninjau status klinis
+            {lang === "id" ? "Pilih pasien untuk meninjau status klinis" : "Select a patient to review clinical status"}
           </div>
         )}
       </div>
@@ -1527,7 +1662,9 @@ function DiagnoseWorkspace({ patients, setPatients, selectedId, setSelectedId })
   );
 }
 
-function UserProfilePage({ userName, userEmail, joinedAt, onLogout, onChangePassword, role, themeColor, badgeBg, badgeColor }) {
+function UserProfilePage({ userName, userEmail, joinedAt, onLogout, onChangePassword, role, themeColor, badgeBg, badgeColor, onUpdateProfileName }) {
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [tempName, setTempName] = useState(userName || "");
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -1592,9 +1729,63 @@ function UserProfilePage({ userName, userEmail, joinedAt, onLogout, onChangePass
             </div>
           </div>
 
-          <h4 className="fw-bold mb-1 text-dark" style={{ letterSpacing: "-0.5px" }}>
-            {userName || "User"}
-          </h4>
+          {isEditingName ? (
+            <div className="d-flex align-items-center justify-content-center gap-2 mb-2">
+              <input
+                type="text"
+                className="form-control form-control-sm text-center fw-bold fs-5"
+                style={{ maxWidth: "250px" }}
+                value={tempName}
+                onChange={(e) => setTempName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    if (tempName.trim()) {
+                      onUpdateProfileName(tempName.trim());
+                      setIsEditingName(false);
+                    }
+                  } else if (e.key === "Escape") {
+                    setIsEditingName(false);
+                  }
+                }}
+                autoFocus
+              />
+              <button 
+                onClick={() => {
+                  if (tempName.trim()) {
+                    onUpdateProfileName(tempName.trim());
+                    setIsEditingName(false);
+                  }
+                }}
+                className="btn btn-sm btn-success rounded-circle p-1"
+                style={{ width: "28px", height: "28px", display: "inline-flex", alignItems: "center", justifyContent: "center" }}
+              >
+                <i className="bi bi-check-lg" />
+              </button>
+              <button 
+                onClick={() => setIsEditingName(false)}
+                className="btn btn-sm btn-danger rounded-circle p-1"
+                style={{ width: "28px", height: "28px", display: "inline-flex", alignItems: "center", justifyContent: "center" }}
+              >
+                <i className="bi bi-x-lg" />
+              </button>
+            </div>
+          ) : (
+            <div className="d-flex align-items-center justify-content-center gap-2 mb-1">
+              <h4 className="fw-bold mb-0 text-dark" style={{ letterSpacing: "-0.5px" }}>
+                {userName || "User"}
+              </h4>
+              <button
+                onClick={() => {
+                  setTempName(userName || "");
+                  setIsEditingName(true);
+                }}
+                className="btn btn-link p-0 text-secondary border-0"
+                title="Ubah Nama Profile"
+              >
+                <i className="bi bi-pencil-square" style={{ fontSize: "16px" }} />
+              </button>
+            </div>
+          )}
 
           <span
             className="badge mb-4 px-3 py-2 rounded-pill text-uppercase fw-semibold"
@@ -1734,7 +1925,7 @@ function UserProfilePage({ userName, userEmail, joinedAt, onLogout, onChangePass
   );
 }
 
-export default function DoctorPanel({ onLogout, userName, userEmail, joinedAt, onChangePassword }) {
+export default function DoctorPanel({ onLogout, userName, userEmail, joinedAt, onChangePassword, onUpdateProfileName, lang, onToggleLanguage }) {
   const [activePage, setActivePage] = useState("dashboard");
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1773,7 +1964,7 @@ export default function DoctorPanel({ onLogout, userName, userEmail, joinedAt, o
   const subpages = {
     dashboard: {
       title: "Papan Pemantauan Pasien IGD Dokter",
-      component: <DoctorDashboard patients={patients} setActivePage={setActivePage} setSelectedId={handleSelectFromDashboard} isMobile={isMobile} userName={userName} />
+      component: <DoctorDashboard patients={patients} setActivePage={setActivePage} setSelectedId={handleSelectFromDashboard} isMobile={isMobile} userName={userName} lang={lang} />
     },
     diagnose: {
       title: "Lembar Catatan Medis & Diagnosis Pasien",
@@ -1783,6 +1974,7 @@ export default function DoctorPanel({ onLogout, userName, userEmail, joinedAt, o
           setPatients={setPatients}
           selectedId={selectedId}
           setSelectedId={setSelectedId}
+          lang={lang}
         />
       )
     },
@@ -1799,6 +1991,7 @@ export default function DoctorPanel({ onLogout, userName, userEmail, joinedAt, o
           themeColor="#4f46e5"
           badgeBg="#e0e7ff"
           badgeColor="#4338ca"
+          onUpdateProfileName={onUpdateProfileName}
         />
       )
     }
@@ -1819,7 +2012,7 @@ export default function DoctorPanel({ onLogout, userName, userEmail, joinedAt, o
 
       <div style={{ background: "#f8fafc", minHeight: "100vh" }}>
         {!isMobile && (
-          <SidebarDoctor activePage={activePage} setActivePage={setActivePage} userName={userName} onLogout={onLogout} />
+          <SidebarDoctor activePage={activePage} setActivePage={setActivePage} userName={userName} onLogout={onLogout} lang={lang} />
         )}
 
         {/* Main Content Area */}
@@ -1843,17 +2036,68 @@ export default function DoctorPanel({ onLogout, userName, userEmail, joinedAt, o
             >
               <div>
                 <h3 className="mb-0 fw-bold text-dark" style={{ letterSpacing: "-0.5px" }}>
-                  {activePage === "profile" ? "Profil Pengguna" : activePage === "dashboard" ? "Dashboard Dokter" : "Pasien & Diagnosis"}
+                  {activePage === "profile" ? translations[lang].userProfile : activePage === "dashboard" ? translations[lang].dashboardDoctor : translations[lang].patientsDiagnosis}
                 </h3>
                 <div className="text-muted" style={{ fontSize: 13, marginTop: 2 }}>
                   {activePage === "dashboard"
-                    ? "Overview of clinical priority & IGD queue"
+                    ? translations[lang].subDoctorDashboard
                     : activePage === "diagnose"
-                      ? "Workspace for inputting clinical diagnosis and medical notes"
-                      : "Manage your profile details and change password"}
+                      ? translations[lang].subDoctorDiagnose
+                      : translations[lang].subUserProfile}
                 </div>
               </div>
               <div className="d-flex align-items-center gap-3">
+                {/* Language Switcher */}
+                <div className="d-flex align-items-center bg-light p-1 rounded-pill me-2" style={{ border: "1px solid #e2e8f0" }}>
+                  <button
+                    onClick={() => onToggleLanguage("id")}
+                    className={`btn btn-sm rounded-circle p-0 d-flex align-items-center justify-content-center ${lang === "id" ? "bg-white border" : ""}`}
+                    style={{ 
+                      width: "32px", 
+                      height: "32px", 
+                      border: lang === "id" ? "1px solid rgba(0,0,0,0.08)" : "none", 
+                      boxShadow: lang === "id" ? "0 3px 8px rgba(0,0,0,0.12)" : "none",
+                      transition: "all 0.2s" 
+                    }}
+                    title="Bahasa Indonesia"
+                  >
+                    <img 
+                      src="https://flagcdn.com/w40/id.png" 
+                      alt="Indonesia Flag" 
+                      style={{ 
+                        width: "20px", 
+                        height: "14px", 
+                        borderRadius: "2px", 
+                        objectFit: "cover",
+                        boxShadow: "0 1px 3px rgba(0,0,0,0.2)"
+                      }} 
+                    />
+                  </button>
+                  <button
+                    onClick={() => onToggleLanguage("en")}
+                    className={`btn btn-sm rounded-circle p-0 d-flex align-items-center justify-content-center ${lang === "en" ? "bg-white border" : ""}`}
+                    style={{ 
+                      width: "32px", 
+                      height: "32px", 
+                      border: lang === "en" ? "1px solid rgba(0,0,0,0.08)" : "none", 
+                      boxShadow: lang === "en" ? "0 3px 8px rgba(0,0,0,0.12)" : "none",
+                      transition: "all 0.2s" 
+                    }}
+                    title="English"
+                  >
+                    <img 
+                      src="https://flagcdn.com/w40/gb.png" 
+                      alt="English Flag" 
+                      style={{ 
+                        width: "20px", 
+                        height: "14px", 
+                        borderRadius: "2px", 
+                        objectFit: "cover",
+                        boxShadow: "0 1px 3px rgba(0,0,0,0.2)"
+                      }} 
+                    />
+                  </button>
+                </div>
                 <span
                   className="badge d-flex align-items-center gap-2 px-3 py-2"
                   style={{
@@ -1866,7 +2110,7 @@ export default function DoctorPanel({ onLogout, userName, userEmail, joinedAt, o
                   }}
                 >
                   <i className="bi bi-calendar3" />
-                  {new Date().toLocaleDateString("id-ID", {
+                  {new Date().toLocaleDateString(lang === "id" ? "id-ID" : "en-US", {
                     weekday: "long",
                     day: "numeric",
                     month: "long",
