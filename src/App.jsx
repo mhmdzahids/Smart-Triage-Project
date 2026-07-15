@@ -376,40 +376,146 @@ function App() {
       ) : (
         /* Styled Authentication Screen */
         <div 
-          className="d-flex justify-content-center align-items-center"
+          className="d-flex min-vh-100 w-100"
           style={{
-            minHeight: '100vh',
-            background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
-            padding: '20px'
+            background: '#ffffff',
+            fontFamily: "'Outfit', 'Inter', sans-serif",
+            overflowX: 'hidden'
           }}
         >
+          {/* Left Side: Mockup (Hidden on Mobile) */}
           <div 
-            className="card border-0 shadow-lg"
+            className="d-none d-lg-flex flex-column justify-content-center p-5 text-white position-relative overflow-hidden"
             style={{
-              width: '100%',
-              maxWidth: '430px',
-              borderRadius: '1.25rem',
-              overflow: 'hidden',
-              boxShadow: '0 20px 40px rgba(0,0,0,0.3)'
+              width: '50%',
+              background: 'radial-gradient(circle at 10% 20%, #1e1b4b 0%, #0f0b36 100%)',
+              borderRight: '1px solid rgba(255,255,255,0.05)'
             }}
           >
-            <div className="card-body p-4 p-md-5 bg-white">
-              {/* Brand Header */}
-              <div className="text-center mb-4">
-                <div 
-                  className="d-inline-flex justify-content-center align-items-center mb-3"
+            {/* Ambient glows */}
+            <div 
+              style={{
+                position: 'absolute',
+                top: '-10%',
+                left: '-10%',
+                width: '300px',
+                height: '300px',
+                background: 'rgba(79, 70, 229, 0.15)',
+                filter: 'blur(80px)',
+                borderRadius: '50%'
+              }}
+            />
+            <div 
+              style={{
+                position: 'absolute',
+                bottom: '-10%',
+                right: '-10%',
+                width: '300px',
+                height: '300px',
+                background: 'rgba(236, 72, 153, 0.1)',
+                filter: 'blur(80px)',
+                borderRadius: '50%'
+              }}
+            />
+
+            {/* Left Content Center (Brand + Mockup) */}
+            <div className="text-center position-relative" style={{ zIndex: 2 }}>
+              {/* Centered Brand Header */}
+              <div className="d-flex flex-column align-items-center gap-2 mb-3">
+                <img 
+                  src="/favicon.svg" 
+                  alt="Smart Triage" 
+                  style={{ 
+                    width: '64px', 
+                    height: '64px', 
+                    objectFit: 'contain',
+                    filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.4))'
+                  }} 
+                />
+                <h3 className="fw-bold mb-0 text-white" style={{ letterSpacing: '-0.5px' }}>Smart Triage</h3>
+              </div>
+
+              {/* Preview image */}
+              <div 
+                className="mx-auto mb-4 p-2"
+                style={{
+                  maxWidth: '440px',
+                  background: 'rgba(255,255,255,0.03)',
+                  border: '1.5px solid rgba(255,255,255,0.08)',
+                  borderRadius: '16px',
+                  boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
+                  backdropFilter: 'blur(10px)'
+                }}
+              >
+                <img 
+                  src="/dashboard-preview.png" 
+                  alt="Dashboard Preview" 
+                  className="img-fluid rounded-3"
                   style={{
-                    width: '60px',
-                    height: '60px',
-                    borderRadius: '50%',
-                    background: 'linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%)',
-                    color: '#145c9c'
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                    display: 'block'
+                  }}
+                />
+              </div>
+
+              <h2 className="fw-bold mb-2 text-white" style={{ fontSize: '28px', letterSpacing: '-0.5px' }}>
+                Easy to use Dashboard
+              </h2>
+              <p className="text-white-50 mx-auto" style={{ maxWidth: '380px', fontSize: '13.5px', lineHeight: '1.6' }}>
+                Accurate MEOWS calculation, automated risk assessment, and real-time clinical dashboards for rapid triage decision-making.
+              </p>
+            </div>
+
+            {/* Left Bottom Info / Footer */}
+            <div className="position-absolute" style={{ bottom: '24px', left: '40px', zIndex: 2 }}>
+              <p className="text-white-50 mb-0" style={{ fontSize: '11px' }}>
+                &copy; {new Date().getFullYear()} Smart Triage System. All rights reserved.
+              </p>
+            </div>
+          </div>
+
+          {/* Right Side: Form */}
+          <div 
+            className="w-100 w-lg-50 d-flex justify-content-center align-items-center p-4 p-md-5"
+            style={{
+              background: '#f8fafc',
+              minHeight: '100vh'
+            }}
+          >
+            <div 
+              className="w-100 p-4 p-md-5 bg-white shadow-lg border"
+              style={{
+                maxWidth: '460px',
+                borderRadius: '24px',
+                border: '1px solid rgba(226, 232, 240, 0.8)'
+              }}
+            >
+              {/* Brand Header for Mobile View (Hidden on Desktop) */}
+              <div className="d-lg-none text-center mb-4">
+                <div 
+                  className="d-inline-flex justify-content-center align-items-center mb-2"
+                  style={{
+                    width: '50px',
+                    height: '50px',
+                    borderRadius: '14px',
+                    background: '#f0fdfa',
+                    border: '1px solid #ccfbf1'
                   }}
                 >
-                  <i className="bi bi-heart-pulse-fill" style={{ fontSize: 26 }} />
+                  <img src="/favicon.svg" alt="Smart Triage" style={{ width: '28px', height: '28px', objectFit: 'contain' }} />
                 </div>
-                <h4 className="fw-bold mb-1" style={{ color: '#1e293b' }}>Smart Triage</h4>
-                <p className="text-muted mb-0" style={{ fontSize: 13 }}>Modified Early Obstetric Warning Score (MEOWS)</p>
+                <h4 className="fw-bold mb-1 text-dark">Smart Triage</h4>
+                <p className="text-muted mb-0" style={{ fontSize: '11.5px' }}>Modified Early Obstetric Warning Score (MEOWS)</p>
+              </div>
+
+              {/* Form Title */}
+              <div className="text-center text-lg-start mb-4">
+                <h3 className="fw-bold mb-1 text-slate-800" style={{ letterSpacing: '-0.5px' }}>
+                  {authMode === 'login' ? 'Sign In to Portal' : 'Create Your Account'}
+                </h3>
+                <p className="text-muted" style={{ fontSize: '13px' }}>
+                  {authMode === 'login' ? 'Welcome back! Please enter your details.' : 'Register to get access to the clinical triage system.'}
+                </p>
               </div>
 
               {/* Login Form */}
@@ -424,15 +530,13 @@ function App() {
 
                   <div className="mb-3">
                     <label className="form-label text-muted fw-semibold" style={{ fontSize: 12 }}>Alamat Email</label>
-                    <div className="input-group">
-                      <span className="input-group-text bg-light border-end-0 text-muted"><i className="bi bi-envelope" /></span>
+                    <div className="custom-input-group">
+                      <span className="input-icon"><i className="bi bi-envelope" /></span>
                       <input 
                         type="email" 
-                        className="form-control bg-light border-start-0"
                         placeholder="contoh@rs.co.id" 
                         value={loginEmail}
                         onChange={(e) => setLoginEmail(e.target.value)}
-                        style={{ fontSize: 13 }}
                         required
                       />
                     </div>
@@ -440,15 +544,13 @@ function App() {
 
                   <div className="mb-4">
                     <label className="form-label text-muted fw-semibold" style={{ fontSize: 12 }}>Kata Sandi</label>
-                    <div className="input-group">
-                      <span className="input-group-text bg-light border-end-0 text-muted"><i className="bi bi-key" /></span>
+                    <div className="custom-input-group">
+                      <span className="input-icon"><i className="bi bi-key" /></span>
                       <input 
                         type="password" 
-                        className="form-control bg-light border-start-0"
                         placeholder="••••••••" 
                         value={loginPassword}
                         onChange={(e) => setLoginPassword(e.target.value)}
-                        style={{ fontSize: 13 }}
                         required
                       />
                     </div>
@@ -508,15 +610,13 @@ function App() {
 
                   <div className="mb-3">
                     <label className="form-label text-muted fw-semibold" style={{ fontSize: 12 }}>Nama Lengkap</label>
-                    <div className="input-group">
-                      <span className="input-group-text bg-light border-end-0 text-muted"><i className="bi bi-person" /></span>
+                    <div className="custom-input-group">
+                      <span className="input-icon"><i className="bi bi-person" /></span>
                       <input 
                         type="text" 
-                        className="form-control bg-light border-start-0"
                         placeholder="Nama Lengkap" 
                         value={regName}
                         onChange={(e) => setRegName(e.target.value)}
-                        style={{ fontSize: 13 }}
                         required
                       />
                     </div>
@@ -524,15 +624,13 @@ function App() {
 
                   <div className="mb-3">
                     <label className="form-label text-muted fw-semibold" style={{ fontSize: 12 }}>Alamat Email</label>
-                    <div className="input-group">
-                      <span className="input-group-text bg-light border-end-0 text-muted"><i className="bi bi-envelope" /></span>
+                    <div className="custom-input-group">
+                      <span className="input-icon"><i className="bi bi-envelope" /></span>
                       <input 
                         type="email" 
-                        className="form-control bg-light border-start-0"
                         placeholder="contoh@rs.co.id" 
                         value={regEmail}
                         onChange={(e) => setRegEmail(e.target.value)}
-                        style={{ fontSize: 13 }}
                         required
                       />
                     </div>
@@ -540,15 +638,13 @@ function App() {
 
                   <div className="mb-3">
                     <label className="form-label text-muted fw-semibold" style={{ fontSize: 12 }}>Kata Sandi</label>
-                    <div className="input-group">
-                      <span className="input-group-text bg-light border-end-0 text-muted"><i className="bi bi-key" /></span>
+                    <div className="custom-input-group">
+                      <span className="input-icon"><i className="bi bi-key" /></span>
                       <input 
                         type="password" 
-                        className="form-control bg-light border-start-0"
                         placeholder="Minimal 6 karakter" 
                         value={regPassword}
                         onChange={(e) => setRegPassword(e.target.value)}
-                        style={{ fontSize: 13 }}
                         required
                       />
                     </div>
@@ -556,13 +652,11 @@ function App() {
 
                   <div className="mb-4">
                     <label className="form-label text-muted fw-semibold" style={{ fontSize: 12 }}>Pilih Peran (Role)</label>
-                    <div className="input-group">
-                      <span className="input-group-text bg-light border-end-0 text-muted"><i className="bi bi-shield-shaded" /></span>
+                    <div className="custom-input-group">
+                      <span className="input-icon"><i className="bi bi-shield-shaded" /></span>
                       <select 
-                        className="form-select bg-light border-start-0"
                         value={regRole}
                         onChange={(e) => setRegRole(e.target.value)}
-                        style={{ fontSize: 13 }}
                         required
                       >
                         <option value="NURSE">Perawat / Bidan</option>
@@ -570,6 +664,19 @@ function App() {
                         <option value="ADMIN">Administrator Sistem</option>
                       </select>
                     </div>
+                  </div>
+
+                  <div className="form-check mb-4 text-start">
+                    <input 
+                      className="form-check-input" 
+                      type="checkbox" 
+                      id="termsCheck" 
+                      defaultChecked 
+                      style={{ cursor: 'pointer' }}
+                    />
+                    <label className="form-check-label text-muted" htmlFor="termsCheck" style={{ fontSize: 12, cursor: 'pointer', userSelect: 'none' }}>
+                      I agree to the <a href="#terms" className="text-decoration-none fw-semibold" style={{ color: '#145c9c' }}>Terms & Conditions</a>
+                    </label>
                   </div>
 
                   <button 

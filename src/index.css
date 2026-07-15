@@ -150,3 +150,46 @@ h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6, [style*="fontSize: 32"], [
   -webkit-text-fill-color: transparent;
 }
 
+/* Custom Input Styles to eliminate cuts and handle focus outline */
+.custom-input-group {
+  border: 1px solid rgba(203, 213, 225, 0.8) !important;
+  background-color: #f8fafc !important;
+  transition: all 0.2s ease-in-out;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  height: 44px;
+}
+
+.custom-input-group:focus-within {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 3.5px rgba(59, 130, 246, 0.15) !important;
+  background-color: #ffffff !important;
+}
+
+.custom-input-group .input-icon {
+  color: #64748b;
+  margin-right: 12px;
+  font-size: 16px;
+  transition: color 0.2s;
+  display: flex;
+  align-items: center;
+}
+
+.custom-input-group:focus-within .input-icon {
+  color: #3b82f6;
+}
+
+.custom-input-group input, .custom-input-group select {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+  padding: 0 !important;
+  font-size: 13.5px !important;
+  color: #1e293b !important;
+  width: 100%;
+}
+
+
